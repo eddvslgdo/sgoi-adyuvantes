@@ -1,5 +1,4 @@
-# Ignorar todos los archivos de configuración de clasp en cualquier subcarpeta
-**/.clasp.json
+
 
 # Ignorar dependencias de Node (si llegas a usar npm en el futuro)
 **/node_modules/
