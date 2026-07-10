@@ -1,0 +1,1068 @@
+// ==========================================
+// LÓGICA DE SALIDAS (CORREGIDA Y LIMPIA)
+// ==========================================
+
+// --- 0. INICIALIZACIÓN (¡NUEVO!) ---
+// Esta función se llamará automáticamente cada vez que cargues la vista
+function iniciarVistaSalidas() {
+  console.log("🚀 Iniciando vista de Salidas limpia...");
+  
+  // 1. Limpiar Carrito
+  COLA_SALIDAS = [];
+  renderizarColaSalida();
+  
+  // 2. Limpiar Formulario
+  reiniciarFormularioSalidas();
+  
+  // 3. Resetear Selector de Producto (Para que no quede el anterior)
+  var selProd = document.getElementById("sal_producto");
+  if(selProd) selProd.selectedIndex = 0;
+  
+  // 4. Asegurar que la tabla de lotes esté oculta
+  var divDisp = document.getElementById("div-disponibilidad");
+  if(divDisp) { divDisp.innerHTML = ""; divDisp.style.display = "none"; }
+}
+
+// --- A. FUNCIONES DEL CARRITO ---
+
+function agregarColaSalida() {
+  var item = construirItemSalida(); 
+  if (!item) return; 
+
+  var existente = COLA_SALIDAS.find(function(i) {
+    return i.lote === item.lote && i.ubicacion_id === item.ubicacion_id;
+  });
+
+  if (existente) {
+     mostrarToast("Nota: Se sumará a la cantidad existente.", "info");
+  }
+
+  COLA_SALIDAS.push(item);
+  renderizarColaSalida();
+  mostrarToast("Agregado al pedido ✅", "success");
+  
+  // Limpiamos SOLO los campos de detalle, pero NO el producto seleccionado
+  // Así el usuario puede seguir agregando más lotes del mismo producto si quiere
+  limpiarCamposSalidaParcial(); 
+  
+  // Refrescamos la tabla para que se actualice el "Stock Disp." restando lo que acabamos de agregar
+  aplicarFIFO(); 
+}
+
+function eliminarSal(index) {
+    COLA_SALIDAS.splice(index, 1);
+    renderizarColaSalida();
+    mostrarToast("Item eliminado.", "info");
+    if(typeof aplicarFIFO === 'function') aplicarFIFO();
+}
+
+function renderizarColaSalida() {
+  if(typeof renderColaGenerica === 'function') {
+     renderColaGenerica(COLA_SALIDAS, "area-cola-salidas", "tablaColaSalidaBody", "contadorColaSal", "sal");
+  }
+}
+
+// --- B. PROCESAR PEDIDO ---
+
+// --- B. PROCESAR PEDIDO ---
+function procesarSalidas() {
+  if (typeof COLA_SALIDAS === 'undefined' || COLA_SALIDAS.length === 0) {
+     return Swal.fire('Pedido Vacío', 'Agrega productos a la lista antes de finalizar.', 'warning');
+  }
+  
+  var modalLog = document.getElementById('modalLogistica');
+  // 🔥 Si el HTML se borró por error, ahora sí nos avisará
+  if (!modalLog) {
+     return Swal.fire('Falta el Modal', 'La ventana de Logística (modalLogistica) se borró del archivo HTML accidentalmente. Avísame y te paso el bloque de código para reponerla.', 'error');
+  }
+  
+  abrirModalGenerico('modalLogistica');
+}
+
+// --- C. CONFIRMACIÓN FINAL (Con Semáforo de Guía) ---
+function confirmarPedidoCompleto() {
+  var nombreEl = document.getElementById("log_nombre");
+  var nombre = nombreEl ? nombreEl.value.trim() : "";
+  
+  if (!nombre) return typeof mostrarToast === 'function' ? mostrarToast("Falta nombre del cliente", "error") : alert("Falta Nombre");
+
+  if (COLA_SALIDAS.length === 0) {
+      return Swal.fire("Error", "El pedido está vacío.", "error");
+  }
+
+  // 🔥 SEMÁFORO DE GUÍA FALTANTE 🔥
+  var inputGuia = document.getElementById("log_guia");
+  var guiaVal = inputGuia ? inputGuia.value.trim() : "";
+  
+  var chkProf = document.getElementById("chk_gen_proforma");
+  var generarProf = chkProf ? chkProf.checked : false;
+  
+  var chkPL = document.getElementById("chk_gen_pl");
+  var generarPL = chkPL ? chkPL.checked : false;
+  
+  var chkCI = document.getElementById("chk_gen_ci");
+  var generarCI = chkCI ? chkCI.checked : false;
+
+  // Si intentan generar PDFs sin Guía, los detenemos
+  if ((generarProf || generarCI || generarPL) && (!guiaVal || guiaVal === "")) {
+      return Swal.fire({
+          title: 'Falta Número de Guía',
+          text: 'Es un riesgo enviar documentos aduanales sin número de rastreo. El pedido se guardará y descontará del inventario, pero los PDFs quedarán PENDIENTES para que los generes después.',
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#10b981',
+          cancelButtonColor: '#94a3b8',
+          confirmButtonText: 'Guardar sin Documentos',
+          cancelButtonText: 'Regresar a escribir la Guía'
+      }).then((res) => {
+          if (res.isConfirmed) {
+              // Apagamos los interruptores de PDF y re-ejecutamos (esta vez pasará de largo)
+              if (chkProf) chkProf.checked = false;
+              if (chkPL) chkPL.checked = false;
+              if (chkCI) chkCI.checked = false;
+              confirmarPedidoCompleto(); 
+          }
+      });
+  }
+
+  var btn = document.querySelector(".btn-finish-order") || event.target;
+  var txtOriginal = btn.innerText;
+  btn.disabled = true;
+  btn.innerText = "Procesando...";
+
+  var paqueteriaSeleccionada = "OTRA";
+  var selectPaq = document.getElementById("log_paqueteria");
+  if (selectPaq) paqueteriaSeleccionada = selectPaq.value;
+  
+  if (paqueteriaSeleccionada === "OTRA") {
+      var otraInput = document.getElementById("log_paqueteria_otra");
+      paqueteriaSeleccionada = otraInput && otraInput.value.trim() !== "" ? otraInput.value.trim() : "OTRA";
+  }
+
+  var datosLogistica = {
+    idCliente: document.getElementById("log_cliente_select") ? document.getElementById("log_cliente_select").value || "nuevo" : "nuevo",
+    nombreCliente: nombre,
+    empresa: document.getElementById("log_empresa") ? document.getElementById("log_empresa").value : "",
+    direccion: document.getElementById("log_direccion") ? document.getElementById("log_direccion").value : "",
+    pais: document.getElementById("log_pais") ? document.getElementById("log_pais").value : "", 
+    telefono: document.getElementById("log_telefono") ? document.getElementById("log_telefono").value : "",
+    email: document.getElementById("log_email") ? document.getElementById("log_email").value : "",
+    tipoEnvio: document.getElementById("log_tipo_envio") ? document.getElementById("log_tipo_envio").value : "Nacional",
+    paqueteria: paqueteriaSeleccionada, 
+    guia: guiaVal,
+    costoEnvio: document.getElementById("log_costo") ? document.getElementById("log_costo").value || 0 : 0,
+    bultos: document.getElementById("log_bultos") ? document.getElementById("log_bultos").value : 1, 
+    generarProforma: generarProf,
+    generarPL: generarPL,
+    generarCI: generarCI
+  };
+  
+  var chkGuardar = document.getElementById("log_guardar_cliente");
+  var guardarCli = chkGuardar ? chkGuardar.checked : false;
+
+  if(typeof mostrarCargando === 'function') mostrarCargando("Guardando pedido...");
+
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if(typeof ocultarCargando === 'function') ocultarCargando();
+      if(typeof res === 'string') { try { res = JSON.parse(res); } catch(e){} }
+
+      if (res && res.success) {
+          Swal.fire({ title: '¡Pedido Enviado!', text: 'ID: ' + res.idPedido, icon: 'success' });
+          
+          if(typeof logActividad === 'function') {
+              logActividad("NUEVO PEDIDO", `Creó el pedido ${res.idPedido} para el cliente: ${nombre} (${COLA_SALIDAS.length} partidas)`);
+          }
+          
+          COLA_SALIDAS = []; 
+          if(typeof renderizarColaSalida === 'function') renderizarColaSalida();
+          if(typeof limpiarFormularioSalidaTotal === 'function') limpiarFormularioSalidaTotal();
+          if(typeof cerrarModalGenerico === 'function') cerrarModalGenerico("modalLogistica");
+          if(typeof reiniciarFormularioSalidas === 'function') reiniciarFormularioSalidas(); 
+          
+          if(typeof cargarDashboardProductos === 'function') cargarDashboardProductos();
+          if(typeof recargarSelectores === 'function') recargarSelectores();
+      } else {
+          Swal.fire("Error", (res && res.error) ? res.error : "Error desconocido.", "error");
+      }
+      if(btn) { btn.disabled = false; btn.innerText = txtOriginal; }
+    })
+    .withFailureHandler(function(err) {
+      if(typeof ocultarCargando === 'function') ocultarCargando();
+      Swal.fire("Error de Conexión", err.message, "error");
+      if(btn) { btn.disabled = false; btn.innerText = txtOriginal; }
+    })
+    .procesarPedidoCompleto(datosLogistica, COLA_SALIDAS, guardarCli);
+}
+
+// --- D. UTILIDADES Y LÓGICA DE LIMPIEZA ---
+
+function reiniciarFormularioSalidas() {
+  var selProdSearch = document.getElementById("sal_producto_search");
+  if(selProdSearch) selProdSearch.value = ""; 
+  
+  var selProd = document.getElementById("sal_producto");
+  if(selProd) selProd.value = ""; 
+  
+  var divDisp = document.getElementById("div-disponibilidad");
+  if(divDisp) { divDisp.innerHTML = ""; divDisp.style.display = "none"; }
+  
+  limpiarCamposSalidaParcial();
+}
+
+function alSeleccionarCliente() {
+  var sel = document.getElementById("log_cliente_select");
+  var idCliente = sel ? sel.value : "";
+  
+  var clientesData = window.CLIENTES_CACHE || (typeof LISTA_CLIENTES !== 'undefined' ? LISTA_CLIENTES : []);
+  var dlDir = document.getElementById("dl_direcciones_cliente");
+  var inputDir = document.getElementById("log_direccion");
+  var btnNuevaDir = document.getElementById("btn_nueva_dir");
+
+  // Si se elige "Nuevo / Manual"
+  if(!idCliente || idCliente === "") {
+     ["log_nombre", "log_empresa", "log_direccion", "log_telefono", "log_email"].forEach(function(id) {
+         var el = document.getElementById(id); if(el) el.value = "";
+     });
+     if(dlDir) dlDir.innerHTML = '';
+     if(btnNuevaDir) btnNuevaDir.style.display = "none";
+     return;
+  }
+
+  // Si se elige un Cliente Guardado
+  var cliente = clientesData.find(function(c) { return String(c.id) === String(idCliente); });
+  if (cliente) {
+     if(document.getElementById("log_nombre")) document.getElementById("log_nombre").value = cliente.nombre || "";
+     if(document.getElementById("log_empresa")) document.getElementById("log_empresa").value = cliente.empresa || "";
+     if(document.getElementById("log_telefono")) document.getElementById("log_telefono").value = cliente.telefono || "";
+     if(document.getElementById("log_email")) document.getElementById("log_email").value = cliente.email || "";
+
+     // Llenar sus direcciones en el Menú Híbrido
+     if(dlDir) {
+         dlDir.innerHTML = '';
+         if (cliente.direcciones && cliente.direcciones.length > 0) {
+             cliente.direcciones.forEach(d => {
+                 let opt = document.createElement("option");
+                 opt.value = d;
+                 dlDir.appendChild(opt);
+             });
+             // Autoseleccionamos la primera
+             if(inputDir) inputDir.value = cliente.direcciones[0];
+         } else {
+             // Fallback a la antigua
+             if(inputDir) inputDir.value = cliente.direccion || "";
+         }
+     }
+     
+     if(btnNuevaDir) btnNuevaDir.style.display = "block"; 
+  }
+}
+
+
+
+function calcularTotalSalida() {
+  if (typeof calcTotalGenerico === 'function') {
+      var total = calcTotalGenerico("sal_presentacion", "sal_cantidad");
+
+      // Buscamos la unidad real en la memoria
+      var unidad = "L";
+      var selProd = document.getElementById("sal_producto");
+      if(window.CACHE_CATALOGOS && selProd && selProd.value) {
+          var prodData = window.CACHE_CATALOGOS.productos.find(x => x.id === selProd.value);
+          if(prodData && prodData.unidad) {
+              let uLower = prodData.unidad.trim().toLowerCase();
+              if(uLower === 'unid' || uLower === 'pza' || uLower === 'pieza' || uLower === 'unidad') unidad = 'Pza';
+              else if(uLower === 'kg' || uLower === 'kilo') unidad = 'Kg';
+          }
+      }
+
+      var elTotal = document.getElementById("sal_infoTotal");
+      if (elTotal) {
+         if(unidad === 'Pza') {
+             elTotal.innerText = Math.round(total) + " " + unidad; // Sin decimales
+         } else {
+             elTotal.innerText = total.toFixed(2) + " " + unidad; // Con decimales
+         }
+      }
+      return { total: total, unidad: unidad };
+  }
+  return { total: 0, unidad: "L" };
+}
+
+
+function limpiarFormularioSalidaTotal() {
+  var ids = ["log_nombre", "log_empresa", "log_direccion", "log_telefono", "log_email", "log_paqueteria", "log_paqueteria_otra", "log_costo", "log_guia"];
+  ids.forEach(function(id) { var el = document.getElementById(id); if(el) el.value = ""; });
+  
+  var selCli = document.getElementById("log_cliente_select"); if(selCli) selCli.value = "";
+  var chk = document.getElementById("log_guardar_cliente"); if(chk) chk.checked = false;
+  
+  // Limpiar checkboxes
+  if(document.getElementById("chk_gen_proforma")) document.getElementById("chk_gen_proforma").checked = false;
+  if(document.getElementById("chk_gen_pl")) document.getElementById("chk_gen_pl").checked = false;
+  if(document.getElementById("chk_gen_ci")) document.getElementById("chk_gen_ci").checked = false;
+  if(document.getElementById("log_pais")) document.getElementById("log_pais").value = "";
+  if(document.getElementById("log_bultos")) document.getElementById("log_bultos").value = "1";
+  
+  if(typeof evaluarOpcionesDocumentacion === 'function') evaluarOpcionesDocumentacion();
+  
+  limpiarCamposSalidaParcial();
+}
+
+// --- E. LÓGICA FIFO (BÚSQUEDA) ---
+
+function aplicarFIFO() {
+  var selectProd = document.getElementById("sal_producto");
+  var prodId = selectProd ? selectProd.value : null;
+  
+  // 1. Limpiamos SOLO los campos de abajo, pero NO el producto seleccionado
+  limpiarCamposSalidaParcial(); 
+
+  // 2. Si no hay producto (o dice 'Selecciona...'), borramos tabla y salimos
+  if (!prodId || prodId === "") {
+      var div = document.getElementById("div-disponibilidad");
+      if(div) { div.innerHTML = ""; div.style.display = "none"; }
+      return;
+  }
+
+  // 3. Cargamos datos
+  if(typeof mostrarCargando === 'function') mostrarCargando("Buscando stock...");
+
+  google.script.run
+    .withSuccessHandler(function(jsonResp) {
+      if(typeof ocultarCargando === 'function') ocultarCargando();
+      
+      var resultado;
+      try { resultado = JSON.parse(jsonResp); } catch (e) { console.error(e); return; }
+      
+      if (!resultado.success) { renderizarTablaDisponibilidad([]); return; }
+      renderizarTablaDisponibilidad(resultado.lista_completa);
+    })
+    .withFailureHandler(function(err){
+       if(typeof ocultarCargando === 'function') ocultarCargando();
+       mostrarError(err);
+    })
+    .obtenerSugerenciaFIFO(prodId, COLA_SALIDAS);
+}
+
+function renderizarTablaDisponibilidad(lista) {
+  var div = document.getElementById("div-disponibilidad");
+  if (!div) return;
+  
+  div.innerHTML = ""; 
+  div.style.display = "block";
+
+  var unidad = "L";
+  var selProd = document.getElementById("sal_producto");
+  if(window.CACHE_CATALOGOS && selProd && selProd.value) {
+      var prodData = window.CACHE_CATALOGOS.productos.find(x => x.id === selProd.value);
+      if (prodData && prodData.unidad) {
+          let uLower = prodData.unidad.trim().toLowerCase();
+          if(uLower === 'unid' || uLower === 'unidad' || uLower === 'pza' || uLower === 'pieza') unidad = 'Pza';
+          else if (uLower === 'kg' || uLower === 'kilo') unidad = 'Kg';
+      }
+  }
+  
+  var table = document.createElement("table");
+  table.style.cssText = "width:100%; font-size:0.85rem; border-collapse:collapse; border:1px solid #eee; background:white; border-radius:8px;";
+  
+  var thead = document.createElement("tr"); thead.style.background = "#f1f3f5";
+  
+  // CAMBIO: Actualizamos el título de la columna
+  ["Lote / Presentación", "Caducidad", "Ubic", "Stock Disp."].forEach(function(t) {
+      var th = document.createElement("th"); th.innerText = t; th.style.padding = "8px"; th.style.textAlign = "left"; thead.appendChild(th);
+  });
+  table.appendChild(thead);
+  
+  var filasAgregadas = 0;
+  var hoy = new Date();
+  hoy.setHours(0,0,0,0);
+
+  if (lista && lista.length) { 
+      lista.forEach(function(l, idx) {
+          var stockNum = parseFloat(l.stock);
+          
+          if (stockNum > 0.001) {
+             var tr = document.createElement("tr");
+             tr.id = "fila-lote-" + idx; 
+
+             // LÓGICA DE FECHAS Y ALERTAS (90 Días)
+             var fechaCadStr = l.caducidad || "---";
+             var estaVencido = false;
+             var proximoVencer = false;
+             var diasDiferencia = 999;
+             
+             if (fechaCadStr !== "---" && fechaCadStr !== "SIN-FECHA") {
+                 var fCad = null;
+                 var partes = fechaCadStr.split("/");
+                 if(partes.length === 3) {
+                     fCad = new Date(partes[2], partes[1]-1, partes[0]);
+                 } else if (fechaCadStr.includes("-")) {
+                     var p = fechaCadStr.split("T")[0].split("-");
+                     if (p.length === 3) fCad = new Date(p[0], p[1]-1, p[2]);
+                 }
+
+                 if (fCad) {
+                     fCad.setHours(0,0,0,0);
+                     diasDiferencia = (fCad.getTime() - hoy.getTime()) / (1000 * 3600 * 24);
+                     
+                     if (Math.sign(diasDiferencia) === -1) {
+                         estaVencido = true;
+                     } else if (diasDiferencia === 90 || Math.sign(diasDiferencia - 90) === -1) {
+                         proximoVencer = true;
+                     }
+                 }
+             }
+
+             var trStyle = "cursor: pointer; border-bottom: 1px solid #eee; transition: background 0.2s;";
+             var caducidadHtml = `<span style="color:#27ae60;">${fechaCadStr}</span>`;
+
+             // Diseño del muro de contención
+             if (estaVencido) {
+                 trStyle += " opacity: 0.5; background-color: #f1f5f9; pointer-events: none;";
+                 caducidadHtml = `<span style="color:#dc2626; font-weight:bold;">${fechaCadStr} <br><span style="font-size:0.65rem; background:#fee2e2; padding:2px 4px; border-radius:4px;">[VENCIDO]</span></span>`;
+             } else if (proximoVencer) {
+                 trStyle += " background-color: #fffbeb;";
+                 caducidadHtml = `<span style="color:#d97706; font-weight:bold;">${fechaCadStr} <br><span style="font-size:0.65rem; background:#fef3c7; padding:2px 4px; border-radius:4px;">[PRÓXIMO]</span></span>`;
+             }
+             
+             tr.style.cssText = trStyle;
+
+             // Acción al hacer clic
+             tr.onclick = function() {
+                 if (estaVencido) return; // Capa de seguridad extra
+                 
+                 if (proximoVencer) {
+                     Swal.fire({
+                         icon: 'warning',
+                         title: 'Atención: Próximo a caducar',
+                         text: 'Este lote caduca en ' + Math.ceil(diasDiferencia) + ' días (' + fechaCadStr + '). ¿Deseas usarlo para el envío?',
+                         showCancelButton: true,
+                         confirmButtonColor: '#f59e0b',
+                         cancelButtonColor: '#94a3b8',
+                         confirmButtonText: 'Sí, seleccionarlo',
+                         cancelButtonText: 'No, cancelar'
+                     }).then((result) => {
+                         if (result.isConfirmed) {
+                             seleccionarLote(l.lote, l.presentacion_id, l.ubicacion_id, l.stock, idx, fechaCadStr, l.producto_id, l.nombre_real_producto);
+                         }
+                     });
+                 } else {
+                     seleccionarLote(l.lote, l.presentacion_id, l.ubicacion_id, l.stock, idx, fechaCadStr, l.producto_id, l.nombre_real_producto);
+                 }
+             };
+             
+             var stockDisplay = (unidad === 'Pza') ? Math.round(stockNum) : stockNum.toFixed(2);
+             
+             var nombreVarianteHtml = "";
+             var valBuscador = document.getElementById('sal_producto_search').value.trim();
+             // Si el nombre de la variante es diferente al maestro que se buscó, mostramos el "apellido"
+             if (l.nombre_real_producto && l.nombre_real_producto.toUpperCase() !== valBuscador.toUpperCase()) {
+                 nombreVarianteHtml = `<span style="font-size:0.7rem; color:#64748b; background:#e2e8f0; padding:2px 4px; border-radius:4px; display:inline-block; margin-top:3px; margin-right:5px;">Var: ${l.nombre_real_producto}</span>`;
+             }
+
+             // --- NUEVO: ETIQUETA VISUAL DE LA PRESENTACIÓN ---
+             var presentacionHtml = `<span style="font-size:0.7rem; color:#007aff; background:#e3f2fd; padding:2px 4px; border-radius:4px; display:inline-block; margin-top:3px; border: 1px solid #b3d7ff;">📦 ${l.nombre_presentacion || "Sin Pres."}</span>`;
+
+             tr.innerHTML = `
+                <td style="padding:8px; vertical-align:middle;">
+                    <div style="font-weight:bold; color:#1e293b;">${l.lote}</div>
+                    <div>${nombreVarianteHtml}${presentacionHtml}</div>
+                </td>
+                <td style="padding:8px; vertical-align:middle;">${caducidadHtml}</td>
+                <td style="padding:8px; vertical-align:middle;">${l.nombre_ubicacion||l.ubicacion_id}</td>
+                <td style="padding:8px; text-align:right; color:#27ae60; font-weight:bold; vertical-align:middle;">${stockDisplay} ${unidad}</td>
+             `;
+             table.appendChild(tr);
+             filasAgregadas++;
+          }
+      });
+  } 
+  
+  if (filasAgregadas === 0) { 
+      table.innerHTML += '<tr><td colspan="4" style="text-align:center; padding:15px; color:#888;">⚠️ No hay stock disponible.</td></tr>'; 
+  }
+  div.appendChild(table);
+}
+
+function seleccionarLote(lote, presId, ubicId, stockMax, indiceFila, caducidad, prodIdExacto, prodNombreExacto) {
+  var elLote = document.getElementById("sal_lote");
+  if(elLote) { 
+      elLote.value = lote; 
+      elLote.readOnly = true; 
+      elLote.style.backgroundColor = "#fff5f5"; 
+      
+      // Guardamos la identidad secreta de la variante para el carrito
+      elLote.setAttribute("data-prod-id", prodIdExacto || "");
+      elLote.setAttribute("data-prod-nombre", prodNombreExacto || "");
+  }
+  
+  var elPres = document.getElementById("sal_presentacion");
+  var volUnitario = 0;
+  if(elPres) {
+      elPres.value = presId; 
+      
+      // FIX 1: Evitamos el símbolo "menor que" usando validaciones exactas
+      if (elPres.selectedIndex === 0 || elPres.selectedIndex === -1) {
+          let totalOpciones = elPres.options.length;
+          // Bucle seguro usando "distinto de" en lugar de "menor que"
+          for (let i = 0; i !== totalOpciones; i++) {
+              if (elPres.options[i].text.trim().toUpperCase() === String(presId).trim().toUpperCase()) {
+                  elPres.selectedIndex = i;
+                  break;
+              }
+          }
+      }
+      
+      elPres.disabled = true; // Se bloquea visualmente
+      var opt = elPres.options[elPres.selectedIndex];
+      
+      if(opt && elPres.selectedIndex !== 0 && elPres.selectedIndex !== -1) { 
+          volUnitario = (typeof parseDecimalFlexible === "function")
+              ? parseDecimalFlexible(opt.getAttribute("data-volumen"))
+              : (parseFloat(opt.getAttribute("data-volumen")) || 0);
+             
+             if (isNaN(volUnitario) || volUnitario === 0) {
+                 if (opt.text) {
+                     var match = opt.text.match(/[\d\.]+/);
+                     if (match) {
+                         volUnitario = parseFloat(match[0]);
+                         if (opt.text.toLowerCase().includes("ml")) volUnitario /= 1000;
+                     }
+                 }
+             }
+      } else {
+          // ULTIMO RECURSO: Extraer los litros directo de la base de datos si todo falla
+          var matchExt = String(presId).match(/[\d\.]+/);
+          if (matchExt) {
+              volUnitario = parseFloat(matchExt[0]);
+              if (String(presId).toLowerCase().includes("ml")) volUnitario /= 1000;
+          }
+      }
+
+      if (isNaN(volUnitario) || volUnitario === 0) volUnitario = 1;
+  } 
+  
+  var elUbic = document.getElementById("sal_ubicacion");
+  if(elUbic) { 
+      elUbic.value = ubicId; 
+      
+      // FIX 2: Lo mismo para la validación de ubicación
+      if (elUbic.selectedIndex === 0 || elUbic.selectedIndex === -1) {
+          let totalOpcionesUbic = elUbic.options.length;
+          for (let i = 0; i !== totalOpcionesUbic; i++) {
+              if (elUbic.options[i].text.trim().toUpperCase() === String(ubicId).trim().toUpperCase()) {
+                  elUbic.selectedIndex = i;
+                  break;
+              }
+          }
+      }
+      elUbic.disabled = true; 
+  }
+
+  var inputCant = document.getElementById("sal_cantidad");
+  if (inputCant) {
+      inputCant.value = "";
+      
+      var maxPiezas = 999999;
+      if (volUnitario !== 0) {
+          // Sumamos 0.001 al stock para evitar que 0.249999 arroje 0 piezas.
+          maxPiezas = Math.floor((parseFloat(stockMax) + 0.001) / volUnitario);
+      }
+      
+      inputCant.placeholder = "Máx: " + maxPiezas + " pzas";
+      inputCant.setAttribute("data-max-pzas", maxPiezas);
+      inputCant.setAttribute("data-caducidad", caducidad);
+      inputCant.focus();
+  }
+  
+  var filas = document.querySelectorAll('[id^="fila-lote-"]');
+  filas.forEach(function(f) { f.style.backgroundColor = "transparent"; });
+  var activa = document.getElementById("fila-lote-" + indiceFila);
+  if (activa) activa.style.backgroundColor = "#e8f0fe"; 
+  
+  if (typeof calcularTotalSalida === 'function') calcularTotalSalida();
+}
+
+function construirItemSalida() {
+  var calculo = calcularTotalSalida();
+  if (calculo.total == 0) { mostrarToast("Cantidad incorrecta", "error"); return null; }
+  
+  var elLote = document.getElementById("sal_lote");
+  var lote = elLote ? elLote.value.trim() : "";
+  if (!lote) { mostrarToast("Selecciona un Lote primero", "warning"); return null; }
+
+  var inputCant = document.getElementById("sal_cantidad");
+  var maxPzas = parseFloat(inputCant.getAttribute("data-max-pzas")) || 999999;
+  var pzas = parseFloat(inputCant.value);
+  
+  if (pzas > maxPzas) { mostrarToast("⚠️ Stock insuficiente", "error"); return null; }
+
+  // Extraer datos exactos de la variante si es que es variante
+  var pIdExacto = elLote.getAttribute("data-prod-id") || document.getElementById("sal_producto").value;
+  var pNameExacto = elLote.getAttribute("data-prod-nombre") || document.getElementById("sal_producto_search").value;
+
+  return {
+    producto_id: pIdExacto,
+    nombre_producto: pNameExacto,
+    presentacion_id: document.getElementById("sal_presentacion").value,
+    nombre_presentacion: getTextoSelect("sal_presentacion"),
+    ubicacion_id: document.getElementById("sal_ubicacion").value,
+    nombre_ubicacion: getTextoSelect("sal_ubicacion"),
+    volumen_L: calculo.total,
+    unidad_medida: calculo.unidad,
+    piezas: pzas,
+    lote: lote,
+    caducidad: inputCant.getAttribute("data-caducidad") || "---"
+  };
+}
+
+function limpiarCamposSalidaParcial() {
+  var inputCant = document.getElementById("sal_cantidad");
+  if(inputCant) { inputCant.value = ""; inputCant.placeholder = "Cantidad"; inputCant.removeAttribute("data-max-pzas"); }
+  
+  if(typeof calcularTotalSalida === 'function') {
+      calcularTotalSalida();
+  } else {
+      var elTotal = document.getElementById("sal_infoTotal");
+      if(elTotal) elTotal.innerText = "0";
+  }
+  
+  var elLote = document.getElementById("sal_lote"); 
+  if(elLote) { 
+      elLote.value = ""; 
+      elLote.readOnly = false; 
+      elLote.style.backgroundColor = "white"; 
+      elLote.removeAttribute("data-prod-id");
+      elLote.removeAttribute("data-prod-nombre");
+  }
+  
+  var elPres = document.getElementById("sal_presentacion"); 
+  if(elPres) { elPres.value = ""; elPres.disabled = false; }
+  
+  var elUbic = document.getElementById("sal_ubicacion"); 
+  if(elUbic) { elUbic.value = ""; elUbic.disabled = false; }
+}
+
+function confirmarEnvioExterno() {
+    let sentido = document.getElementById("ext_sentido").value;
+    let desc = document.getElementById("ext_desc").value.trim();
+    let emp = document.getElementById("ext_empresa").value.trim();
+    let paq = document.getElementById("ext_paq").value.trim();
+    let costo = document.getElementById("ext_costo").value;
+    
+    if(!desc || !emp || !paq || !costo) return Swal.fire("Campos Incompletos", "Llena los campos obligatorios (*).", "warning");
+
+    let datos = {
+        sentido: sentido,
+        descripcion: desc,
+        nombreContacto: emp,
+        direccion: document.getElementById("ext_dir").value,
+        paqueteria: paq,
+        costo: costo,
+        guia: document.getElementById("ext_guia").value
+    };
+
+    Swal.fire({ title: 'Guardando...', didOpen: () => Swal.showLoading() });
+
+    google.script.run
+        .withSuccessHandler(res => {
+            cerrarModalGenerico('modalEnvioExterno');
+            Swal.fire("¡Guardado!", "Gasto registrado correctamente.", "success");
+            // Limpiar Modal (incluyendo el nuevo select)
+            ["ext_desc","ext_empresa","ext_dir","ext_paq","ext_costo","ext_guia"].forEach(id => document.getElementById(id).value = "");
+            document.getElementById("ext_sentido").value = "Envio";
+            
+            if(typeof cargarDashboardPrincipal === 'function') cargarDashboardPrincipal();
+            if(typeof cargarDashboardPedidos === 'function') cargarDashboardPedidos();
+        })
+        .withFailureHandler(err => Swal.fire("Error", err.message, "error"))
+        .registrarEnvioExterno(datos);
+}
+
+// --- AUTOCOMPLETAR DIRECCIÓN EN ENVÍOS EXTERNOS ---
+window.autocompletarDirExterno = function() {
+    let elEmpresa = document.getElementById("ext_empresa");
+    let dirInput = document.getElementById("ext_dir");
+
+    if(!elEmpresa || !dirInput || typeof LISTA_CLIENTES === 'undefined') return;
+
+    let inputVal = elEmpresa.value.trim().toLowerCase();
+    if(inputVal === "") return;
+
+    // Buscamos si el texto coincide exactamente con una Empresa o con un Nombre
+    let cliente = LISTA_CLIENTES.find(c => 
+        (c.empresa && c.empresa.trim().toLowerCase() === inputVal) || 
+        (c.nombre && c.nombre.trim().toLowerCase() === inputVal)
+    );
+
+    if (cliente && cliente.direccion) {
+        // Solo autocompleta si el campo de dirección está vacío para no borrar si tú escribiste algo a mano
+        if (dirInput.value.trim() === "") { 
+            dirInput.value = cliente.direccion;
+            if(typeof mostrarToast === 'function') mostrarToast("Dirección autocompletada 📍", "info");
+        }
+    }
+};
+
+
+window.agregarNuevaDireccionCheckout = function() {
+    var idCliente = document.getElementById("log_cliente_select").value;
+    if(!idCliente) return Swal.fire("Atención", "Selecciona un cliente primero.", "warning");
+
+    Swal.fire({
+        title: '📍 Agregar Sucursal / Dirección',
+        html: '<p style="font-size:0.9rem; color:#64748b; margin-top:0;">Ej: Planta Querétaro - Calle 123, Bodega 4...<br><br>💡 <b>Tip:</b> Si incluyes datos fiscales, ponlos al final con la palabra <b>NOTA</b> (Ej: ...Centro NOTA IVA: 12).</p>',
+        input: 'textarea',
+        showCancelButton: true,
+        confirmButtonColor: '#2ecc71',
+        confirmButtonText: 'Guardar Dirección',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if(result.isConfirmed && result.value.trim() !== "") {
+            let nuevaDir = result.value.trim();
+            mostrarCargando("Guardando en la libreta del cliente...");
+            
+            api.agregarDireccionCliente(idCliente, nuevaDir, function(res) {
+                ocultarCargando();
+                if(res.success) {
+                    // 1. Actualizamos la memoria del navegador para no recargar la página
+                    let cli = window.CLIENTES_CACHE.find(c => c.id === idCliente);
+                    if(cli) cli.direcciones = res.direcciones;
+                    
+                    // 2. Refrescamos el Select visualmente
+                    alSeleccionarCliente();
+                    
+                    // 3. Dejamos seleccionada automáticamente la que acabamos de crear
+                    document.getElementById("log_direccion").value = nuevaDir;
+                    mostrarToast("Dirección guardada ✅", "success");
+                } else {
+                    Swal.fire("Error", "No se pudo guardar: " + res.error, "error");
+                }
+            });
+        }
+    });
+}
+
+// --- LÓGICA DE DOCUMENTACIÓN INTERNACIONAL ---
+window.evaluarOpcionesDocumentacion = function() {
+    let paq = document.getElementById("log_paqueteria").value;
+    let tipo = document.getElementById("log_tipo_envio").value;
+    
+    // 1. Mostrar input manual si elige "OTRA"
+    let inputOtra = document.getElementById("log_paqueteria_otra");
+    if(inputOtra) inputOtra.style.display = (paq === "OTRA") ? "block" : "none";
+
+    // 2. Si es internacional, sugerimos marcar las casillas
+    let chkProf = document.getElementById("chk_gen_proforma");
+    let chkPL = document.getElementById("chk_gen_pl");
+    if(tipo === "Internacional") {
+        if(chkProf && !chkProf.checked) chkProf.checked = true;
+        if(chkPL && !chkPL.checked) chkPL.checked = true;
+    }
+
+    // 3. Mostrar CI solo si es FEDEX
+    let lblCI = document.getElementById("lbl_chk_ci");
+    let chkCI = document.getElementById("chk_gen_ci");
+    if(lblCI) {
+        if (paq === "FEDEX") {
+            lblCI.style.display = "flex";
+            if(tipo === "Internacional" && chkCI) chkCI.checked = true; // Auto-check si es internacional y fedex
+        } else {
+            lblCI.style.display = "none";
+            if(chkCI) chkCI.checked = false;
+        }
+    }
+};
+
+// ==========================================
+// VISTA PREVIA DE FACTURA (MODO FANTASMA)
+// ==========================================
+window.previsualizarFacturaFedex = function() {
+    var nombreEl = document.getElementById("log_nombre");
+    var nombre = nombreEl ? nombreEl.value.trim() : "";
+    if (!nombre) return mostrarToast("Falta nombre del contacto", "warning");
+    if (COLA_SALIDAS.length === 0) return mostrarToast("El pedido está vacío.", "warning");
+
+    var datosLogistica = {
+        nombreCliente: nombre,
+        empresa: document.getElementById("log_empresa").value,
+        direccion: document.getElementById("log_direccion").value,
+        pais: document.getElementById("log_pais") ? document.getElementById("log_pais").value : "",
+        telefono: document.getElementById("log_telefono").value,
+        email: document.getElementById("log_email").value,
+        guia: document.getElementById("log_guia").value || "VISTA-PREVIA",
+        bultos: document.getElementById("log_bultos") ? document.getElementById("log_bultos").value : 1, // <-- NUEVO
+    };
+
+    Swal.fire({
+        title: 'Generando Vista Previa...',
+        html: 'Creando PDF en modo fantasma sin afectar el inventario 👻',
+        allowOutsideClick: false,
+        didOpen: () => { Swal.showLoading(); }
+    });
+
+    google.script.run
+        .withSuccessHandler(function(base64PDF) {
+            if(!base64PDF) return Swal.fire("Error", "No se pudo generar el documento.", "error");
+            
+            // 1. TRUCO ANTI-BLOQUEO: Convertir Base64 a Archivo Binario (Blob)
+            // 1. TRUCO ANTI-BLOQUEO (VERSIÓN MODERNA SIN SÍMBOLOS PROBLEMÁTICOS)
+            var bytes = Uint8Array.from(window.atob(base64PDF), c => c.charCodeAt(0));
+            var blob = new Blob([bytes], { type: 'application/pdf' });
+            
+            // 2. Crear una URL local y segura para el navegador
+            var urlSegura = URL.createObjectURL(blob);
+
+            var blob = new Blob([bytes], { type: 'application/pdf' });
+            
+            // 2. Crear una URL local y segura para el navegador
+            var urlSegura = URL.createObjectURL(blob);
+
+            // 3. Mostrar el SweetAlert Híbrido
+            Swal.fire({
+                title: '📄 Vista Previa FedEx',
+                html: `
+                    <div style="background: #f8fafc; padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 1px dashed #cbd5e1;">
+                        <p style="font-size: 0.85rem; color: #475569; margin: 0 0 10px 0;">Debido a la alta seguridad de Chrome, si la vista inferior no carga, haz clic en este botón:</p>
+                        <a href="${urlSegura}" target="_blank" style="display: inline-block; background: #10b981; color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: bold; box-shadow: 0 4px 6px rgba(16, 185, 129, 0.2);">
+                            👁️ Abrir PDF en Nueva Pestaña
+                        </a>
+                    </div>
+                    <iframe src="${urlSegura}" width="100%" height="400px" style="border: 1px solid #cbd5e1; border-radius: 8px; background: white;"></iframe>
+                `,
+                width: '800px',
+                showCloseButton: true,
+                showConfirmButton: false
+            });
+        })
+        .withFailureHandler(function(err) {
+            Swal.fire("Error", err.message, "error");
+        })
+        .generarVistaPreviaFedex(datosLogistica, COLA_SALIDAS);
+
+};
+
+// ==========================================
+// MÓDULO: DOCUMENTOS LIBRES Y CARRITO FANTASMA
+// ==========================================
+var CARRITO_FANTASMA = [];
+
+window.cambiarPestanaDocumentos = function(pestana) {
+    var tabGenerar = document.getElementById("tab_doc_generar");
+    var tabHistorial = document.getElementById("tab_doc_historial");
+    var btnGenerar = document.getElementById("btn_tab_generar");
+    var btnHistorial = document.getElementById("btn_tab_historial");
+
+    if (pestana === 'generar') {
+        tabGenerar.style.display = "block";
+        tabHistorial.style.display = "none";
+        btnGenerar.classList.add("active");
+        btnGenerar.style.color = "white";
+        btnHistorial.classList.remove("active");
+        btnHistorial.style.color = "#cbd5e1";
+    } else {
+        tabGenerar.style.display = "none";
+        tabHistorial.style.display = "block";
+        btnHistorial.classList.add("active");
+        btnHistorial.style.color = "white";
+        btnGenerar.classList.remove("active");
+        btnGenerar.style.color = "#cbd5e1";
+        
+        cargarHistorialFacturasBackend();
+    }
+};
+
+window.cargarHistorialFacturasBackend = function() {
+    var tbody = document.getElementById("tabla_historial_facturas");
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 40px; color: #94a3b8;">Cargando folios...</td></tr>';
+    
+    api.obtenerHistorialFacturas(function(data) {
+        tbody.innerHTML = "";
+        if(!data || data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 30px; color: #94a3b8;">Aún no hay facturas registradas.</td></tr>';
+            return;
+        }
+        data.forEach(function(f) {
+            // 🔥 Botón de Google Drive
+            let btnLink = f.link ? `<a href="${f.link}" target="_blank" style="background: #e0e7ff; color: #4f46e5; padding: 6px 12px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 0.85rem; display: inline-block; box-shadow: 0 2px 4px rgba(79,70,229,0.1); transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">📁 Ver Carpeta</a>` : `<span style="color:#94a3b8; font-size: 0.8rem; font-style: italic;">Sin enlace previo</span>`;
+            
+            let fechaCorta = String(f.fecha).substring(0, 10);
+            
+            tbody.innerHTML += `
+                <tr style="border-bottom: 1px solid #f1f5f9; background: white;">
+                    <td style="padding: 15px 20px; font-family: monospace; font-weight: bold; color: #2563eb; font-size: 1.1rem;">${f.folio}</td>
+                    <td style="padding: 15px 20px; color: #64748b; font-size: 0.9rem;">${fechaCorta}</td>
+                    <td style="padding: 15px 20px; color: #1e293b; font-weight: 600;">${f.empresa}</td>
+                    <td style="padding: 15px 20px; text-align: right;">${btnLink}</td>
+                </tr>
+            `;
+        });
+    });
+};
+
+window.eliminarDelCarritoFantasma = function(index) {
+    CARRITO_FANTASMA.splice(index, 1);
+    renderizarCarritoFantasma();
+};
+
+window.agregarAlCarritoFantasma = function() {
+    var prod = document.getElementById("dl_producto").value.trim().toUpperCase();
+    var lote = document.getElementById("dl_lote").value.trim().toUpperCase() || "S/N";
+    var presSel = document.getElementById("dl_presentacion");
+    var presText = presSel.options[presSel.selectedIndex] ? presSel.options[presSel.selectedIndex].text : "";
+    var cant = parseInt(document.getElementById("dl_cantidad").value) || 1;
+
+    if (!prod) return typeof mostrarToast === 'function' ? mostrarToast("Falta descripción", "warning") : alert("Falta descripción");
+    if (!presSel.value) return typeof mostrarToast === 'function' ? mostrarToast("Selecciona una presentación", "warning") : alert("Falta presentación");
+
+    // Deducimos la unidad para los cálculos del PDF (L, Kg, Pza)
+    let unidadInferida = "L";
+    let presLower = presText.toLowerCase();
+    if(presLower.includes("kg") || presLower.includes("kilo") || presLower.includes("saco") || presLower.includes("gramo")) unidadInferida = "Kg";
+    if(presLower.includes("pza") || presLower.includes("unid") || presLower.includes("pieza")) unidadInferida = "Pza";
+
+    // Extraemos el volumen nominal que viene inyectado desde la BD
+    let volUnitario = parseFloat(presSel.options[presSel.selectedIndex].getAttribute("data-volumen")) || 1;
+    let volumenTotalL = cant * volUnitario;
+
+    CARRITO_FANTASMA.push({
+        producto_id: "LIBRE", // ID comodín para que no descuente inventario
+        nombre_producto: prod,
+        presentacion_id: presSel.value,
+        nombre_presentacion: presText,
+        volumenUnitario: volUnitario,
+        volumen_L: volumenTotalL,
+        piezas: cant,
+        unidad_medida: unidadInferida, 
+        lote: lote,
+        ubicacion_id: "N/A"
+    });
+
+    document.getElementById("dl_producto").value = "";
+    document.getElementById("dl_lote").value = "";
+    document.getElementById("dl_presentacion").value = "";
+    document.getElementById("dl_cantidad").value = "1";
+    document.getElementById("dl_producto").focus();
+    
+    renderizarCarritoFantasma();
+};
+
+window.renderizarCarritoFantasma = function() {
+    var tbody = document.getElementById("tabla_carrito_fantasma");
+    if (!tbody) return;
+    tbody.innerHTML = "";
+
+    if(CARRITO_FANTASMA.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #94a3b8; padding: 15px;">El carrito está vacío</td></tr>';
+        return;
+    }
+
+    CARRITO_FANTASMA.forEach(function(item, index) {
+        tbody.innerHTML += `
+            <tr style="border-bottom: 1px solid #f1f5f9; background: white;">
+                <td style="padding: 10px; color: #1e293b;"><strong>${item.nombre_producto}</strong></td>
+                <td style="padding: 10px; font-family: monospace; color: #d63031; font-weight: bold;">${item.lote}</td>
+                <td style="padding: 10px; color: #475569;">${item.nombre_presentacion}</td>
+                <td style="text-align: center; padding: 10px; font-weight: bold; color: #0f172a;">${item.piezas}</td>
+                <td style="text-align: center; padding: 10px;">
+                    <button type="button" onclick="eliminarDelCarritoFantasma(${index})" style="background: #fee2e2; color: #dc2626; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.9rem;">🗑️</button>
+                </td>
+            </tr>
+        `;
+    });
+};
+
+window.eliminarDelCarritoFantasma = function(index) {
+    CARRITO_FANTASMA.splice(index, 1);
+    renderizarCarritoFantasma();
+};
+
+// --- EL PUENTE HACIA EL BACKEND ---
+// --- EL PUENTE HACIA EL BACKEND ---
+window.generarDocumentosLibresBackend = function() {
+    var empresa = document.getElementById("dl_empresa").value.trim();
+    var contacto = document.getElementById("dl_contacto").value.trim();
+    var direccion = document.getElementById("dl_direccion").value.trim();
+    var pais = document.getElementById("dl_pais").value.trim();
+    var telefono = document.getElementById("dl_telefono").value.trim();
+    var email = document.getElementById("dl_email").value.trim();
+    var guia = document.getElementById("dl_guia").value.trim();
+    
+    var nombreEmpresaReal = empresa ? empresa : contacto;
+
+    // VALIDACIONES BÁSICAS
+    if (!nombreEmpresaReal) return mostrarToast("Falta Empresa o Contacto", "warning");
+    if (CARRITO_FANTASMA.length === 0) return mostrarToast("El carrito está vacío", "warning");
+
+    var generarProf = document.getElementById("dl_check_proforma").checked;
+    var generarPL = document.getElementById("dl_check_pl").checked;
+    var generarCI = document.getElementById("dl_check_fedex").checked;
+
+    if(!generarProf && !generarPL && !generarCI) {
+        return mostrarToast("Selecciona al menos un documento a generar", "warning");
+    }
+
+    // 🔥 VALIDACIÓN ESTRICTA (COMO TÚ LO SUGERISTE)
+    if (generarCI || generarProf) {
+        if (!telefono || !email || !guia || !direccion || !pais) {
+            return Swal.fire(
+                "Información Incompleta", 
+                "Para generar una Proforma o Commercial Invoice, es obligatorio llenar todos los campos: Dirección, País, Teléfono, Email y Número de Guía.", 
+                "warning"
+            );
+        }
+    }
+
+    var datosDoc = {
+        empresa: empresa,
+        nombreCliente: contacto,
+        direccion: direccion,
+        pais: pais,
+        bultos: document.getElementById("dl_bultos").value || 1,
+        guia: guia,
+        telefono: telefono,
+        email: email,
+        rol: document.getElementById("dl_rol").value, // 🔥 EL NUEVO DATO
+        generarProforma: generarProf,
+        generarPL: generarPL,
+        generarCI: generarCI
+    };
+
+    var btn = event.target;
+    var originalText = btn.innerText;
+    btn.innerText = "⏳ Generando...";
+    btn.disabled = true;
+
+    Swal.fire({
+        title: 'Fabricando Documentos...',
+        html: 'Conectando con Google Drive y asignando folio...',
+        allowOutsideClick: false,
+        didOpen: () => { Swal.showLoading(); }
+    });
+
+    google.script.run
+        .withSuccessHandler(function(res) {
+            btn.innerText = originalText;
+            btn.disabled = false;
+            
+            if(res.success) {
+                Swal.fire("¡Folio Asignado!", `Documentos creados exitosamente bajo el folio: <b>${res.folio}</b>`, "success");
+                CARRITO_FANTASMA = [];
+                renderizarCarritoFantasma();
+                // Limpieza
+                ["dl_empresa", "dl_contacto", "dl_direccion", "dl_pais", "dl_telefono", "dl_email", "dl_guia"].forEach(id => {
+                    document.getElementById(id).value = "";
+                });
+                document.getElementById("dl_bultos").value = "1";
+            } else {
+                Swal.fire("Error", res.error, "error");
+            }
+        })
+        .withFailureHandler(function(err) {
+            btn.innerText = originalText;
+            btn.disabled = false;
+            Swal.fire("Error de Conexión", err.message, "error");
+        })
+        .generarDocumentosLibres(datosDoc, CARRITO_FANTASMA); 
+};

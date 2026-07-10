@@ -1,0 +1,2375 @@
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #f2f2f7;
+    padding: 16px;
+    color: #333;
+  }
+  .card {
+    background: #fff;
+    border-radius: 14px;
+    padding: 24px; /* Un poco más de aire */
+    max-width: 420px;
+    margin: 20px auto;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+  }
+  h2 { text-align: center; margin-bottom: 20px; color: #1c1c1e; }
+  label { font-weight: 600; margin-top: 16px; display: block; font-size: 0.9rem; color: #666; }
+  
+  select, input {
+    width: 100%;
+    padding: 12px;
+    margin-top: 8px;
+    border-radius: 10px;
+    border: 1px solid #d1d1d6;
+    font-size: 16px;
+    background-color: #fff;
+    box-sizing: border-box; /* Importante para que el padding no rompa el ancho */
+  }
+
+  button {
+    width: 100%;
+    padding: 16px;
+    margin-top: 24px;
+    border-radius: 12px;
+    border: none;
+    font-size: 17px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.1s;
+  }
+  button:active { transform: scale(0.98); }
+
+  .entrada { background: #34c759; color: white; }
+  .salida { background: #ff3b30; color: white; }
+  
+  #estado { 
+    margin-top: 20px; 
+    text-align: center; 
+    font-weight: 500; 
+    min-height: 24px; /* Reserva espacio para que no salte */
+    font-size: 0.9rem;
+  }
+  .error { color: #ff3b30; }
+  .success { color: #34c759; }
+
+
+  /* Estilos del Modal */
+  .modal-overlay {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+  }
+  .modal-content {
+    background: white;
+    padding: 20px;
+    border-radius: 14px;
+    width: 90%;
+    max-width: 350px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+  }
+  .modal-content h3 { margin-top: 0; }
+
+
+  /* Navegación */
+  .nav-bar {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  .nav-btn {
+    background: #e5e5ea;
+    color: #333;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-weight: 600;
+    width: auto; /* Sobreescribe el width:100% global */
+    margin-top: 0;
+  }
+  .nav-btn.active {
+    background: #007aff;
+    color: white;
+  }
+
+  /* Grid de Ubicaciones */
+  .grid-layout {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 15px;
+    margin-top: 20px;
+  }
+
+  /* Tarjeta de Ubicación individual */
+  .ubicacion-card {
+    border: 1px solid #d1d1d6;
+    border-radius: 12px;
+    padding: 15px;
+    background: #f9f9f9;
+    transition: all 0.2s;
+  }
+  .ubicacion-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  }
+  .ubicacion-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 8px;
+  }
+  .badge {
+    background: #34c759;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 0.8rem;
+  }
+  .badge.empty { background: #8e8e93; }
+
+  /* Tabla mini dentro de la tarjeta */
+  .mini-tabla {
+    width: 100%;
+    font-size: 0.85rem;
+    border-collapse: collapse;
+  }
+  .mini-tabla td {
+    padding: 4px 0;
+    border-bottom: 1px dashed #eee;
+  }
+  .actions-row {
+    margin-top: 10px;
+    display: flex;
+    gap: 5px;
+  }
+  .btn-icon {
+    padding: 5px 10px;
+    font-size: 0.8rem;
+    margin-top: 0;
+    width: auto;
+  }
+
+  /* --- NUEVOS ESTILOS PARA MODAL DE CHECKOUT --- */
+
+/* Encabezado moderno con gradiente */
+.modal-header-checkout {
+    background: linear-gradient(135deg, #333 0%, #555 100%);
+    padding: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 3px solid #007aff;
+}
+.modal-header-checkout h3 {
+    margin: 0; color: white; font-size: 1.4rem; display: flex; align-items: center; gap: 10px;
+}
+
+/* Contenedor principal en Grid (2 columnas) */
+.checkout-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr; /* Dos columnas iguales */
+    gap: 25px; /* Espacio entre columnas */
+    padding: 25px;
+    background-color: #f8f9fa;
+}
+
+/* Secciones (Cliente y Paquetería) */
+.checkout-section {
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    border: 1px solid #eef1f6;
+}
+
+/* Títulos de sección */
+.checkout-title {
+    margin-top: 0;
+    margin-bottom: 15px;
+    font-size: 1.1rem;
+    color: #333;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #f0f0f0;
+}
+.title-blue { color: #007aff; border-color: #007aff; }
+.title-red { color: #d63031; border-color: #d63031; }
+
+/* Ajustes para inputs en el grid */
+.checkout-section .form-group { margin-bottom: 12px; }
+.checkout-section label { font-size: 0.85rem; color: #666; }
+.input-compact { font-size: 0.95rem; padding: 8px 12px; height: 40px; }
+
+/* Checkbox de guardar */
+.save-client-box {
+    background: #e3f2fd;
+    padding: 10px 15px;
+    border-radius: 8px;
+    display: flex; align-items: center; gap: 10px;
+    margin-top: 15px;
+    border: 1px solid #bbdefb;
+}
+
+/* Pie del modal */
+.modal-footer-checkout {
+    padding: 20px;
+    background: white;
+    border-top: 1px solid #eee;
+    text-align: right;
+}
+.btn-finish-order {
+    background: linear-gradient(to right, #2ecc71, #27ae60);
+    color: white; border: none; font-size: 1.2rem;
+    padding: 12px 30px; box-shadow: 0 4px 10px rgba(46, 204, 113, 0.3);
+}
+
+/* Responsive: En celulares se vuelve 1 sola columna */
+@media only screen and (max-width: 768px) {
+    .checkout-grid { grid-template-columns: 1fr; gap: 15px; padding: 15px; }
+    .modal-content { max-width: 95% !important; }
+}
+
+
+/* --- ESTILOS MODERNOS PARA PRODUCTOS --- */
+
+.product-card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.05); /* Sombra suave */
+  margin-bottom: 20px;
+  border: 1px solid #eef2f6;
+  overflow: hidden; /* Para que las esquinas no se salgan */
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.product-card:hover {
+  transform: translateY(-2px); /* Efecto de elevación al pasar mouse */
+  box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+}
+
+.product-header {
+  padding: 20px 25px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #fff;
+  cursor: pointer; /* Indica que es clickable */
+}
+
+.product-info h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #2c3e50;
+}
+
+.product-info span {
+  font-size: 0.85rem;
+  color: #7f8c8d;
+}
+
+.product-actions {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.stock-badge {
+  background-color: #e3f2fd;
+  color: #1565c0;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.btn-toggle-details {
+  background: transparent;
+  border: 1px solid #dfe6e9;
+  color: #636e72;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-toggle-details:hover {
+  background: #f1f2f6;
+  color: #2d3436;
+  border-color: #b2bec3;
+}
+
+/* --- TABLA INTERNA (DETALLES) --- */
+.product-details {
+  background-color: #f8f9fa;
+  border-top: 1px solid #eef2f6;
+  padding: 0;
+  display: none; /* Oculto por defecto */
+}
+
+.details-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.details-table th {
+  text-align: left;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  color: #b2bec3;
+  padding: 15px 25px;
+  font-weight: 600;
+  border-bottom: 1px solid #eef2f6;
+}
+
+.details-table td {
+  padding: 12px 25px;
+  font-size: 0.9rem;
+  color: #2d3436;
+  border-bottom: 1px solid #f1f2f6;
+}
+
+.details-table tr:last-child td {
+  border-bottom: none;
+}
+
+/* Estilos específicos para columnas */
+.col-lote {
+  font-family: 'Consolas', monospace;
+  color: #e67e22; /* Naranja para resaltar lote */
+  font-weight: 600;
+}
+
+.col-number {
+  text-align: right; /* Números a la derecha se leen mejor */
+  font-weight: 600;
+}
+
+/* --- ESTILOS PRODUCTOS V2 (PREMIUM) --- */
+
+.product-card {
+  background: white;
+  border-radius: 16px; /* Bordes más redondeados */
+  box-shadow: 0 4px 20px rgba(0,0,0,0.06); /* Sombra difusa y elegante */
+  margin-bottom: 24px;
+  border: 1px solid #f0f0f0;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  position: relative;
+}
+
+/* Efecto Hover: La tarjeta se levanta */
+.product-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 30px rgba(0,0,0,0.1);
+  border-color: #e0e0e0;
+}
+
+/* Borde lateral decorativo (Azul por defecto) */
+.product-card::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 6px;
+  background: linear-gradient(to bottom, #007aff, #00c6ff);
+}
+
+/* CABECERA DE TARJETA */
+.product-header {
+  padding: 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #fff;
+  cursor: pointer;
+  padding-left: 30px; /* Espacio para el borde lateral */
+}
+
+.product-info h3 {
+  margin: 0 0 4px 0;
+  font-size: 1.2rem;
+  font-weight: 800; /* Texto más grueso */
+  color: #1a1a1a;
+  letter-spacing: -0.5px;
+}
+
+.product-info span {
+  font-size: 0.9rem;
+  color: #888;
+  font-weight: 500;
+}
+
+/* BOTONES Y STOCK */
+.product-actions {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.stock-badge {
+  background-color: #f5f9ff;
+  color: #007aff;
+  padding: 8px 16px;
+  border-radius: 12px;
+  font-weight: 800;
+  font-size: 1rem;
+  box-shadow: inset 0 0 0 1px rgba(0,122,255,0.1); /* Borde sutil interno */
+}
+
+.btn-toggle-details {
+  background: white;
+  border: 1px solid #e1e4e8;
+  color: #555;
+  border-radius: 10px;
+  padding: 8px 16px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.btn-toggle-details:hover {
+  background: #f8f9fa;
+  border-color: #ccc;
+  color: #333;
+}
+
+/* --- DETALLES INTERNOS (TABLA) --- */
+.product-details {
+  background-color: #fafbfc; /* Fondo muy sutil */
+  border-top: 1px dashed #e1e4e8; /* Línea punteada para separar */
+  display: none; 
+  padding: 15px 20px;
+}
+
+.details-table {
+  width: 100%;
+  border-collapse: separate; 
+  border-spacing: 0 8px; /* Espacio entre filas */
+}
+
+.details-table th {
+  text-align: left;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #a0a0a0;
+  padding: 0 15px 5px 15px;
+  font-weight: 700;
+}
+
+.details-table tbody tr {
+  background: white;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  transition: transform 0.1s;
+}
+.details-table tbody tr:hover {
+  transform: scale(1.005); /* Micro efecto zoom al pasar mouse */
+}
+
+.details-table td {
+  padding: 12px 15px;
+  font-size: 0.9rem;
+  color: #444;
+  border: 1px solid #f0f0f0;
+  border-width: 1px 0; /* Solo bordes arriba y abajo */
+}
+
+.details-table td:first-child { border-left: 1px solid #f0f0f0; border-radius: 8px 0 0 8px; }
+.details-table td:last-child { border-right: 1px solid #f0f0f0; border-radius: 0 8px 8px 0; }
+
+/* Estilos de Celdas */
+.col-lote { font-family: 'Monaco', 'Consolas', monospace; color: #e67e22; font-weight: 700; background: #fffdf5; border-radius: 4px; padding: 4px 8px !important; display:inline-block; border: 1px solid #fceecb;}
+.col-number { text-align: right; font-weight: 700; color: #2c3e50; }
+
+
+/* --- ESTILOS PRODUCTOS PREMIUM --- */
+
+/* Animación de carga */
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+/* Tarjeta Principal */
+.product-card {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+  margin-bottom: 24px;
+  border: 1px solid #f0f0f0;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.product-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 30px rgba(0,0,0,0.1);
+}
+
+/* Línea de color lateral */
+.product-card::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 6px;
+  /* El color se define inline en el HTML, esto es fallback */
+  background: #007aff; 
+}
+
+/* Cabecera */
+.product-header {
+  padding: 20px 25px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #fff;
+  cursor: pointer;
+  padding-left: 30px; /* Espacio para el borde de color */
+}
+
+.product-info h3 {
+  margin: 0 0 4px 0;
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #2c3e50;
+  letter-spacing: -0.5px;
+}
+
+.product-info span {
+  font-size: 0.9rem;
+  color: #7f8c8d;
+  font-weight: 500;
+}
+
+/* Acciones y Badges */
+.product-actions {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.stock-badge {
+  padding: 6px 14px;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 0.95rem;
+  /* El color de texto y fondo se define inline */
+}
+
+.btn-toggle-details {
+  background: white;
+  border: 1px solid #e1e4e8;
+  color: #555;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+}
+
+.btn-toggle-details:hover {
+  background: #f8f9fa;
+  border-color: #ccc;
+  color: #333;
+}
+
+/* Detalles (Tabla interna) */
+.product-details {
+  background-color: #fafbfc;
+  border-top: 1px dashed #e1e4e8;
+  display: none;
+  padding: 15px 25px;
+}
+
+.details-table {
+  width: 100%;
+  border-collapse: separate; 
+  border-spacing: 0 6px; /* Espacio entre filas */
+}
+
+.details-table th {
+  text-align: left;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  color: #a0a0a0;
+  padding: 0 10px 5px 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.details-table tbody tr {
+  background: white;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+  transition: transform 0.1s;
+}
+
+.details-table td {
+  padding: 10px 12px;
+  font-size: 0.9rem;
+  border: 1px solid #f0f0f0;
+  border-width: 1px 0;
+}
+
+.details-table td:first-child { border-left: 1px solid #f0f0f0; border-radius: 6px 0 0 6px; }
+.details-table td:last-child { border-right: 1px solid #f0f0f0; border-radius: 0 6px 6px 0; }
+
+.col-lote { 
+  font-family: 'Consolas', monospace; 
+  color: #e67e22; 
+  font-weight: 700; 
+  background: #fffdf5; 
+  border: 1px solid #fceecb;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.col-number { text-align: right; font-weight: 700; color: #2c3e50; }
+
+/* --- ADAPTACIÓN MÓVIL (RESPONSIVE) --- */
+
+@media only screen and (max-width: 600px) {
+  
+  /* Ajustes generales de la tarjeta principal */
+  .product-header {
+    padding: 15px; /* Menos relleno para aprovechar espacio */
+    flex-direction: column; /* Elementos uno debajo del otro */
+    align-items: flex-start;
+    gap: 10px;
+  }
+  
+  .product-actions {
+    width: 100%;
+    justify-content: space-between; /* Botón y Stock separados */
+    margin-top: 5px;
+  }
+
+  /* --- TRANSFORMACIÓN DE LA TABLA DE DETALLES --- */
+  /* Ocultamos los encabezados de la tabla porque en móvil estorban */
+  .details-table thead {
+    display: none; 
+  }
+
+  /* Convertimos cada fila (tr) en una cajita individual */
+  .details-table tbody tr {
+    display: flex;
+    flex-wrap: wrap;
+    background: white;
+    margin-bottom: 12px;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid #eee;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.03);
+  }
+
+  /* Ajustamos las celdas (td) para que fluyan mejor */
+  .details-table td {
+    border: none;
+    padding: 4px 0;
+    width: 100%; /* Ocupan todo el ancho por defecto */
+    display: flex;
+    justify-content: space-between; /* Etiqueta a la izq, valor a la der */
+    font-size: 0.9rem;
+  }
+  
+  /* Quitamos bordes redondeados específicos de escritorio */
+  .details-table td:first-child, .details-table td:last-child {
+    border-radius: 0;
+    border: none;
+  }
+
+  /* --- ETIQUETAS VISUALES PARA MÓVIL --- */
+  /* Como ocultamos el encabezado, agregamos etiquetas con CSS */
+  
+  .details-table td:nth-of-type(1)::before { content: "📍 Ubicación:"; color: #999; font-weight: 500; }
+  .details-table td:nth-of-type(2)::before { content: "📦 Presentación:"; color: #999; font-weight: 500; }
+  .details-table td:nth-of-type(3)::before { content: "#️⃣ Lote:"; color: #999; font-weight: 500; }
+  .details-table td:nth-of-type(4)::before { content: "📅 Caducidad:"; color: #999; font-weight: 500; }
+  .details-table td:nth-of-type(5)::before { content: "💧 Cantidad:"; color: #999; font-weight: 500; }
+
+  /* Ajustes específicos para que se vea bonito */
+  .details-table td:nth-of-type(3) { /* Lote */
+    margin-top: 5px;
+    background: #fff8e1; /* Fondo amarillito suave para resaltar */
+    padding: 8px;
+    border-radius: 6px;
+  }
+  
+  .details-table td:nth-of-type(5) { /* Cantidad */
+    font-size: 1.1rem;
+    color: #007aff;
+    font-weight: 800;
+    border-top: 1px dashed #eee;
+    margin-top: 8px;
+    padding-top: 8px;
+  }
+}
+
+.info-row {
+  font-size: 0.85rem;
+  color: #555;
+  margin-bottom: 4px;
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* --- ESTILOS GESTIÓN DE ENVÍOS (DISEÑO GOOGLE / CLEAN) --- */
+
+/* Contenedor Principal */
+.main-wrapper {
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 2px 15px rgba(0,0,0,0.05);
+  height: 85vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid #e0e0e0;
+  font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* Header Superior */
+.view-header {
+  padding: 15px 25px;
+  background: #ffffff;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.header-title {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #202124;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Pestañas (Tabs) */
+.tabs-wrapper {
+  background: #f1f3f4;
+  padding: 4px;
+  border-radius: 8px;
+  display: flex;
+  gap: 5px;
+}
+
+.tab-item {
+  padding: 8px 20px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  color: #5f6368;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+}
+
+.tab-item.active {
+  background: #ffffff;
+  color: #1a73e8; /* Azul Google */
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+/* Barra de Herramientas (Fondo Gris) */
+.toolbar-container {
+  padding: 12px 25px;
+  background: #ffffff;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  gap: 15px;
+  align-items: center;
+}
+
+/* Input Buscador Estilo Cápsula */
+.search-input-group {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  background: #f1f3f4;
+  border-radius: 24px;
+  padding: 6px 20px;
+  border: 1px solid transparent;
+  transition: background 0.2s, box-shadow 0.2s;
+  max-width: 600px;
+}
+
+.search-input-group:focus-within {
+  background: #ffffff;
+  border-color: #dfe1e5;
+  box-shadow: 0 1px 6px rgba(32,33,36,0.15);
+}
+
+.search-icon {
+  font-size: 1.1rem;
+  color: #5f6368;
+  margin-right: 12px;
+}
+
+.big-input {
+  border: none;
+  background: transparent;
+  outline: none;
+  width: 100%;
+  font-size: 0.95rem;
+  color: #3c4043;
+  padding: 5px 0;
+}
+
+/* Filtro de Fechas */
+.date-filter-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #dadce0;
+  padding: 5px 12px;
+  border-radius: 8px;
+  background: white;
+}
+
+.date-input {
+  border: none;
+  outline: none;
+  color: #5f6368;
+  font-family: inherit;
+  font-size: 0.85rem;
+  background: transparent;
+}
+
+/* Botón Reset */
+.btn-reset {
+  color: #d93025;
+  font-weight: 600;
+  cursor: pointer;
+  background: none;
+  border: none;
+  font-size: 0.85rem;
+}
+.btn-reset:hover { text-decoration: underline; }
+
+/* Tabla de Datos */
+.table-area {
+  flex: 1;
+  overflow-y: auto;
+  background: #ffffff;
+  position: relative;
+}
+
+.google-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.google-table th {
+  position: sticky;
+  top: 0;
+  background: #ffffff;
+  z-index: 10;
+  text-align: left;
+  padding: 12px 20px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #5f6368;
+  text-transform: uppercase;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.google-table td {
+  padding: 14px 20px;
+  border-bottom: 1px solid #f0f0f0;
+  vertical-align: middle;
+  color: #3c4043;
+}
+
+.google-table tr:hover {
+  background-color: #f8f9fa;
+}
+
+/* Textos de Celda */
+.txt-main {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: #202124;
+  display: block;
+}
+
+.txt-sub {
+  font-size: 0.8rem;
+  color: #5f6368;
+  display: block;
+  margin-top: 3px;
+}
+
+/* Badges de Estatus */
+.badge {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: inline-block;
+}
+
+.st-pend { background: #fef7e0; color: #b06000; border: 1px solid #fce8b2; }
+.st-blue { background: #e8f0fe; color: #1967d2; border: 1px solid #d2e3fc; }
+.st-green { background: #e6f4ea; color: #137333; border: 1px solid #ceead6; }
+.st-red { background: #fce8e6; color: #c5221f; border: 1px solid #fad2cf; }
+
+/* Botón de Acción */
+.btn-action {
+  background: #ffffff;
+  border: 1px solid #dadce0;
+  color: #1a73e8;
+  padding: 6px 16px;
+  border-radius: 18px;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: all 0.2s;
+}
+
+.btn-action:hover {
+  background: #f1f3f4;
+  border-color: #1a73e8;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+/* --- ESTILOS DEL MODAL INTERNO --- */
+.modal-head-clean {
+  padding: 25px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #eee;
+  background: #fff;
+}
+
+.input-locked {
+  background: #f1f3f4;
+  color: #80868b;
+  cursor: not-allowed;
+  border: 1px solid #dadce0;
+}
+
+/* Ocultar cabecera negra fea del modal genérico si existe */
+#modalDetallePedido .modal-header, 
+#modalDetallePedido h3 {
+    display: none !important;
+}
+#modalDetallePedido .modal-content {
+    padding: 0 !important;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+/* --- ESTILOS ENVIOS V6 (CORREGIDO) --- */
+
+.main-envios-container {
+  background: white;
+  border: 1px solid #dce0e4;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  height: 85vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* Header */
+.envios-header {
+  padding: 15px 20px;
+  background: white;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.envios-title { font-size: 1.2rem; font-weight: 700; color: #333; }
+
+/* Pestañas */
+.tabs-envios { display: flex; gap: 5px; background: #f1f3f5; padding: 4px; border-radius: 6px; }
+.tab-envio-btn {
+  border: none; background: transparent; padding: 6px 15px;
+  font-weight: 600; color: #666; cursor: pointer; border-radius: 4px;
+}
+.tab-envio-btn.active { background: white; color: #007aff; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+
+/* BARRA DE HERRAMIENTAS (Fondo Gris Claro para contraste) */
+.envios-toolbar {
+  padding: 15px 20px;
+  background: #f8f9fa; 
+  border-bottom: 1px solid #e0e0e0;
+  display: flex;
+  gap: 15px;
+  align-items: center;
+}
+
+/* INPUT BUSCADOR (VISIBLE) */
+.input-search-container {
+  flex: 1;
+  position: relative;
+  max-width: 500px;
+}
+.input-search-visible {
+  width: 100%;
+  padding: 10px 10px 10px 35px; /* Espacio para el icono */
+  border: 1px solid #999 !important; /* Borde forzado gris oscuro */
+  border-radius: 6px;
+  background: #ffffff !important;
+  color: #333 !important;
+  font-size: 0.95rem;
+  outline: none;
+}
+.input-search-visible:focus {
+  border-color: #007aff !important;
+  box-shadow: 0 0 0 3px rgba(0,122,255,0.1);
+}
+.icon-lupa { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #666; }
+
+/* Inputs Fecha */
+.date-group { display: flex; gap: 5px; align-items: center; background: white; border: 1px solid #ccc; padding: 5px 10px; border-radius: 6px; }
+.input-date-simple { border: none; color: #333; outline: none; }
+
+/* Tabla */
+.table-scroll-wrapper { flex: 1; overflow-y: auto; background: white; }
+.table-envios { width: 100%; border-collapse: collapse; }
+.table-envios th {
+  position: sticky; top: 0; background: #f1f3f5; z-index: 5;
+  text-align: left; padding: 12px 15px;
+  font-size: 0.75rem; font-weight: 700; color: #555; text-transform: uppercase;
+  border-bottom: 2px solid #ddd;
+}
+.table-envios td { padding: 12px 15px; border-bottom: 1px solid #eee; color: #333; font-size: 0.9rem; vertical-align: middle; }
+.table-envios tr:hover { background: #f9fbfd; }
+
+/* Textos */
+.txt-bold { font-weight: 600; color: #222; display: block; }
+.txt-dim { font-size: 0.85rem; color: #777; display: block; margin-top: 2px; }
+.txt-prod { color: #007aff; font-weight: 500; font-size: 0.9rem; }
+
+/* Badges */
+.badge-st { padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; display: inline-block; }
+.b-pend { background: #fff3cd; color: #856404; }
+.b-blue { background: #d1ecf1; color: #0c5460; }
+.b-green { background: #d4edda; color: #155724; }
+
+/* Modal Limpio */
+.modal-header-white { padding: 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; background: #fff; }
+
+/* --- ESTILOS MODERNOS PARA ENVÍOS --- */
+
+/* 1. Header y Barra de Herramientas */
+.envios-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 25px;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+.search-container {
+  position: relative;
+  flex: 1;
+  max-width: 400px;
+}
+
+.search-input {
+  width: 100%;
+  padding: 12px 15px 12px 40px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8fafc;
+  font-size: 0.95rem;
+  transition: all 0.3s;
+}
+.search-input:focus {
+  background: white;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  outline: none;
+}
+.search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94a3b8;
+}
+
+/* 2. Tabs de Filtro (Estilo iOS/Segmented) */
+.filter-tabs {
+  background: #f1f5f9;
+  padding: 4px;
+  border-radius: 10px;
+  display: flex;
+  gap: 5px;
+}
+.filter-tab {
+  padding: 8px 16px;
+  border: none;
+  background: transparent;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #64748b;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.filter-tab.active {
+  background: white;
+  color: #0f172a;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+/* 3. Tabla Moderna */
+.table-container {
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  overflow: hidden; /* Para las esquinas redondeadas */
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+.modern-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.modern-table thead {
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.modern-table th {
+  text-align: left;
+  padding: 15px 20px;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #64748b;
+  font-weight: 700;
+}
+
+.modern-table td {
+  padding: 16px 20px;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: middle;
+  color: #334155;
+}
+
+.modern-table tr:last-child td {
+  border-bottom: none;
+}
+
+.modern-table tr:hover {
+  background-color: #f8fafc;
+}
+
+/* 4. Elementos de la Tabla */
+.id-badge {
+  font-family: 'Courier New', monospace;
+  font-weight: 700;
+  color: #2563eb;
+  background: #eff6ff;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  display: inline-block;
+  margin-bottom: 4px;
+}
+
+.date-text {
+  display: block;
+  font-size: 0.8rem;
+  color: #94a3b8;
+}
+
+.client-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.client-avatar {
+  width: 35px;
+  height: 35px;
+  background: #e0e7ff;
+  color: #4f46e5;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 0.9rem;
+}
+
+.status-badge {
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+/* Colores de Estatus */
+.status-pendiente { background: #fff7ed; color: #c2410c; border: 1px solid #ffedd5; }
+.status-enviado { background: #eff6ff; color: #1d4ed8; border: 1px solid #dbeafe; }
+.status-entregado { background: #f0fdf4; color: #15803d; border: 1px solid #dcfce7; }
+
+/* Botón de Acción */
+.btn-manage {
+  padding: 8px 16px;
+  background: white;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  color: #475569;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.btn-manage:hover {
+  border-color: #3b82f6;
+  color: #3b82f6;
+  background: #f0f9ff;
+}
+
+/* --- CORRECCIÓN DEFINITIVA DE SCROLL Y LAYOUT --- */
+  html, body {
+    margin: 0;
+    padding: 0;
+    background-color: #f2f2f7;
+    /* Dejamos el scroll totalmente libre para toda la página */
+  }
+
+  body { padding: 15px; }
+
+  .vista {
+    display: none;
+    padding-bottom: 80px; 
+  }
+
+  .card {
+    background: #fff;
+    border-radius: 14px;
+    padding: 25px;
+    max-width: 800px; 
+    width: 100%;
+    box-sizing: border-box; 
+    margin: 0 auto 20px auto;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+  }
+
+
+/* --- VISTA DE ENVÍOS (Layout Estático Perfecto) --- */
+  #vista-pedidos {
+    /* Mantenemos el tamaño y el bloqueo de scroll, pero QUITAMOS el display: flex !important */
+    height: calc(100vh - 90px); 
+    padding: 0;
+    overflow: hidden; 
+  }
+  .envios-fixed-header {
+    flex-shrink: 0; /* Evita que la cabecera se encoja o se mueva */
+    background-color: #f2f2f7;
+    padding-bottom: 15px;
+  }
+
+  .envios-scroll-body {
+    flex-grow: 1; /* Ocupa toooodo el espacio restante hacia abajo */
+    overflow-y: auto; /* SCROLL INTERNO: Solo la tabla se moverá */
+    background: white;
+    border-radius: 12px;
+    border: 1px solid #e1e4e8;
+    min-height: 0; /* Hack obligatorio de Flexbox para que el scroll funcione */
+  }
+
+  .sticky-thead th {
+    position: sticky;
+    top: 0;
+    background: #f8f9fa;
+    z-index: 5;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+  }
+
+/* --- BARRA DE HERRAMIENTAS MODERNA (V2) --- */
+
+.toolbar-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  align-items: center;
+  background: white;
+  padding: 10px 15px;
+  border-radius: 16px; /* Bordes más redondeados */
+  border: 1px solid #eef2f6; /* Borde muy sutil */
+  box-shadow: 0 4px 12px rgba(0,0,0,0.03); /* Sombra suave flotante */
+}
+
+/* 1. BUSCADOR (Más limpio) */
+.search-box-styled {
+  flex: 1; /* Ocupa el espacio disponible */
+  min-width: 220px;
+  position: relative;
+}
+.search-box-styled input {
+  margin: 0;
+  padding: 10px 10px 10px 40px;
+  background: #f8fafc; /* Fondo gris muy claro */
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  color: #334155;
+  font-size: 0.95rem;
+  transition: all 0.2s;
+  width: 100%;
+  box-sizing: border-box; /* Evita que el padding rompa el ancho */
+}
+.search-box-styled input:focus {
+  background: white;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  outline: none;
+}
+.search-icon-pos {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94a3b8;
+  pointer-events: none;
+}
+
+/* 2. GRUPO DE FECHAS (Estilo Cápsula Unificada) */
+.date-group-styled {
+  display: flex;
+  align-items: center;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 5px; /* Padding interno para que los inputs respiren */
+  gap: 0; /* Sin gap, usaremos el borde del input para separar */
+}
+
+.date-item {
+  display: flex;
+  align-items: center;
+  position: relative;
+  padding: 0 8px;
+}
+
+/* Etiqueta pequeña encima o al lado */
+.lbl-date {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #64748b; /* Gris pizarra, no azul chillón */
+  margin-right: 6px;
+  letter-spacing: 0.5px;
+}
+
+.input-date-minimal {
+  border: none;
+  background: #f1f5f9; /* Fondo gris suave para el input */
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 0.85rem;
+  color: #334155;
+  outline: none;
+  padding: 6px 8px;
+  width: auto;
+  min-width: 135px; /* ANCHO SUFICIENTE para dd/mm/aaaa */
+  cursor: pointer;
+  transition: background 0.2s;
+  width: 130px !important; 
+  box-sizing: border-box;
+}
+
+.input-date-minimal:hover {
+  background: #e2e8f0;
+}
+.input-date-minimal:focus {
+  background: white;
+  box-shadow: inset 0 0 0 1px #3b82f6;
+}
+
+/* Separador vertical visual */
+.date-separator {
+  width: 1px;
+  height: 24px;
+  background: #e2e8f0;
+  margin: 0 5px;
+}
+
+/* 3. TABS DE ESTADO (Estilo Segmented Control de iOS) */
+.filter-tabs {
+  background: #f1f5f9;
+  padding: 4px;
+  border-radius: 10px;
+  display: flex;
+  gap: 4px;
+  white-space: nowrap; /* Evita que se rompan en líneas */
+}
+
+.filter-tab {
+  padding: 6px 16px;
+  border-radius: 7px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #64748b;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.filter-tab:hover {
+  color: #1e293b;
+}
+
+.filter-tab.active {
+  background: white;
+  color: #0f172a; /* Texto oscuro */
+  border-color: rgba(0,0,0,0.05);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1); /* Pequeña sombra para resaltar */
+}
+
+/* =========================================================
+   FIX: SCROLL INTERNO PARA MODALES EN PANTALLAS PEQUEÑAS 
+   ========================================================= */
+.modal-content {
+    /* Limita la altura máxima al 88% de la pantalla actual */
+    max-height: 88vh !important; 
+    
+    /* Activa el scroll vertical automático forzando a ignorar cualquier otro estilo */
+    overflow-y: auto !important; 
+}
+
+/* Opcional: Darle un diseño bonito y moderno a la barrita de scroll */
+.modal-content::-webkit-scrollbar {
+    width: 8px;
+}
+.modal-content::-webkit-scrollbar-track {
+    background: #f8f9fa; 
+    border-radius: 8px;
+}
+.modal-content::-webkit-scrollbar-thumb {
+    background: #cbd5e1; 
+    border-radius: 8px;
+}
+.modal-content::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8; 
+}
+
+/* =========================================================
+   ADAPTACIÓN MÓVIL (APP NATIVA) PARA LA VISTA DE ENVÍOS 
+   ========================================================= */
+@media only screen and (max-width: 768px) {
+    
+    /* 1. Ajuste de la Barra de Herramientas (Filtros y Buscador) */
+    .toolbar-container {
+        flex-direction: column;
+        align-items: stretch;
+        padding: 15px;
+        gap: 12px;
+    }
+    .search-box-styled, .date-group-styled, .filter-tabs {
+        width: 100%;
+        justify-content: space-between;
+    }
+    .input-date-minimal {
+        min-width: 0 !important;
+        width: 100% !important;
+        text-align: center;
+    }
+
+    /* 2. Transformar la Tabla de Envíos en Tarjetas Verticales */
+    #tablaPedidosMain thead {
+        display: none; /* Ocultamos los encabezados (estorban en móvil) */
+    }
+    
+    #tablaPedidosBody tr {
+        display: flex;
+        flex-direction: column;
+        background: white;
+        margin-bottom: 16px;
+        border-radius: 12px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.06);
+        border: 1px solid #e2e8f0;
+        padding: 16px;
+        position: relative; /* Para posicionar elementos absolutos dentro */
+    }
+
+    #tablaPedidosBody td {
+        border: none;
+        padding: 4px 0;
+        display: flex;
+        align-items: center;
+        text-align: left;
+    }
+
+    /* Celda 1: ID de Pedido y Fecha */
+    #tablaPedidosBody td:nth-child(1) {
+        border-bottom: 1px dashed #e2e8f0;
+        padding-bottom: 10px;
+        margin-bottom: 8px;
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    #tablaPedidosBody td:nth-child(1) .id-badge {
+        font-size: 1.05rem;
+    }
+
+    /* Celda 4: Estatus (Lo movemos a la esquina superior derecha) */
+    #tablaPedidosBody td:nth-child(4) {
+        position: absolute;
+        top: 16px;
+        right: 16px;
+        padding: 0;
+    }
+
+    /* Celda 2: Info del Cliente */
+    #tablaPedidosBody td:nth-child(2) {
+        justify-content: flex-start;
+    }
+
+    /* Celda 3: Resumen de Productos y Guía */
+    #tablaPedidosBody td:nth-child(3) {
+        flex-direction: column;
+        align-items: flex-start;
+        background: #f8fafc;
+        padding: 12px;
+        border-radius: 8px;
+        margin: 12px 0;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    /* Celda 5: Botón de "Gestionar" */
+    #tablaPedidosBody td:nth-child(5) {
+        justify-content: center;
+        margin-top: 5px;
+        padding-top: 10px;
+    }
+    
+    /* Hacemos el botón gigante para tocarlo fácil con el pulgar */
+    #tablaPedidosBody td:nth-child(5) .btn-manage {
+        width: 100%;
+        justify-content: center;
+        padding: 14px;
+        font-size: 1.05rem;
+        background: #f0f9ff;
+        color: #2563eb;
+        border-color: #bfdbfe;
+        box-shadow: 0 2px 4px rgba(37,99,235,0.1);
+    }
+}
+/* =========================================================
+   FIX DEFINITIVO: MODALES PERFECTOS (PC, LAPTOP Y MÓVIL)
+   ========================================================= */
+
+/* 1. Límite general para que ningún modal se salga de la pantalla */
+.modal-content {
+    max-height: 88vh !important;
+    overflow-y: auto; /* Scroll nativo para modales pequeños (ubicaciones, etc) */
+}
+
+/* 2. Layout "App Nativa" exclusivo para el Modal de Pedidos (PC y Móvil) */
+#modalDetallePedido .modal-content {
+    overflow-y: hidden !important; /* Apagamos el scroll general aquí */
+    display: flex !important;
+    flex-direction: column !important;
+    padding: 0 !important;
+}
+
+#modalDetallePedido .clean-header {
+    flex-shrink: 0 !important; /* Nunca se encoge, se queda congelado arriba */
+}
+
+#modalDetallePedido .clean-body {
+    flex: 1 1 auto !important;
+    overflow-y: auto !important; /* El scroll SOLO ocurre aquí adentro */
+    max-height: none !important;
+}
+
+#modalDetallePedido .clean-footer {
+    flex-shrink: 0 !important; /* Nunca se encoge, se queda congelado abajo */
+}
+
+/* 3. Barrita de scroll elegante para la zona central */
+#modalDetallePedido .clean-body::-webkit-scrollbar {
+    width: 6px;
+}
+#modalDetallePedido .clean-body::-webkit-scrollbar-track {
+    background: transparent; 
+}
+#modalDetallePedido .clean-body::-webkit-scrollbar-thumb {
+    background: #cbd5e1; 
+    border-radius: 10px;
+}
+#modalDetallePedido .clean-body::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8; 
+}
+
+/* 4. Comportamiento de los botones en celulares */
+@media only screen and (max-width: 768px) {
+    .clean-footer {
+        flex-direction: column;
+        gap: 10px;
+    }
+    .clean-footer .btn-action-modal {
+        width: 100% !important;
+        margin: 0 !important;
+    }
+}
+
+/* Fila bloqueada en la tabla de caducados */
+tr.fila-bloqueada {
+    background-color: #f1f5f9 !important; /* Gris clarito */
+    opacity: 0.5;
+    pointer-events: none; /* Evita que le den clic por error */
+}
+
+/* =========================================================
+   REMATES VISUALES: TABLA DE BAJAS (SCROLL Y MÓVIL)
+   ========================================================= */
+
+/* 2. DISEÑO MÓVIL TIPO "TARJETAS" (Para pantallas pequeñas) */
+@media only screen and (max-width: 768px) {
+    #tablaBajas {
+        max-height: none; /* En móvil dejamos que fluya natural */
+        border: none;
+    }
+    
+    #tablaBajas thead {
+        display: none; /* Ocultamos los encabezados porque estorban en móvil */
+    }
+    
+    #tablaBajas tbody {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+    
+    #tablaBajas tr {
+        display: flex;
+        flex-direction: column;
+        border: 1px solid #cbd5e1;
+        border-radius: 12px;
+        padding: 16px;
+        position: relative;
+        background: white;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    }
+    
+    #tablaBajas td {
+        display: flex;
+        justify-content: space-between; /* Etiqueta a la izquierda, valor a la derecha */
+        align-items: center;
+        padding: 6px 0 !important;
+        border-bottom: 1px dashed #e2e8f0 !important;
+        text-align: right !important; 
+    }
+    
+    #tablaBajas td:last-child {
+        border-bottom: none !important;
+    }
+
+    /* Columna 1: Checkbox (Lo mandamos a la esquina superior izquierda) */
+    #tablaBajas td:nth-child(1) {
+        position: absolute;
+        top: 16px;
+        left: 16px; 
+        border: none !important;
+        padding: 0 !important;
+        width: auto;
+    }
+    #tablaBajas td:nth-child(1) input {
+        transform: scale(1.6) !important; /* Hacemos la casilla más grande para el dedo */
+    }
+
+    /* Columna 2: Producto (Más grande y con espacio para la casilla) */
+    #tablaBajas td:nth-child(2) {
+        justify-content: flex-start;
+        padding-left: 36px !important; 
+        font-size: 1.15rem;
+        color: #0f172a;
+        border-bottom: 2px solid #f1f5f9 !important;
+        padding-bottom: 10px !important;
+        margin-bottom: 5px;
+    }
+
+    /* INYECCIÓN DE ETIQUETAS: El CSS le pone nombre a cada dato para que se entienda en móvil */
+    #tablaBajas td:nth-child(3)::before { content: "Presentación:"; color: #64748b; font-weight: 500; font-size: 0.85rem; }
+    #tablaBajas td:nth-child(4)::before { content: "Lote:"; color: #64748b; font-weight: 500; font-size: 0.85rem; }
+    #tablaBajas td:nth-child(5)::before { content: "Ubicación:"; color: #64748b; font-weight: 500; font-size: 0.85rem; }
+    #tablaBajas td:nth-child(6)::before { content: "Caducidad:"; color: #dc3545; font-weight: 500; font-size: 0.85rem; }
+    #tablaBajas td:nth-child(7)::before { content: "Stock Disponible:"; color: #007aff; font-weight: 500; font-size: 0.85rem; }
+    
+    /* 3. Ajuste extra para el "Carrito" rosado de abajo en móviles */
+    #tablaColaBajasBody tr {
+        display: flex;
+        flex-direction: column;
+        padding: 10px 0;
+    }
+    #tablaColaBajasBody td {
+        width: 100% !important;
+        text-align: left !important;
+        padding: 4px 0 !important;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    #tablaColaBajasBody td:nth-child(2) {
+        justify-content: flex-end; 
+    }
+    #tablaColaBajasBody td:nth-child(3) {
+        justify-content: flex-end; 
+        border-top: 1px dashed #ffd1d1;
+        margin-top: 8px;
+        padding-top: 12px !important;
+    }
+    #tablaColaBajasBody td:nth-child(3) button {
+        width: 100%;
+        background: #fff5f5;
+        border-radius: 8px;
+        padding: 8px;
+        border: 1px solid #ffcccc;
+    }
+}
+
+/* =========================================================
+   MEJORAS UX: SPINNERS DE CARGA Y SCROLL GLOBAL
+   ========================================================= */
+
+/* 1. Contenedores con scroll interno para listas largas (Ubicaciones y Productos) */
+.list-scroll-container {
+    max-height: 65vh; /* Altura máxima: 65% de la pantalla */
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 8px; /* Espacio para que el scroll no tape el texto */
+    margin-top: 15px;
+}
+
+/* Diseño elegante para la barra de scroll */
+.list-scroll-container::-webkit-scrollbar { width: 6px; }
+.list-scroll-container::-webkit-scrollbar-track { background: transparent; }
+.list-scroll-container::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+.list-scroll-container::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+/* 2. Animación del Spinner (Círculo giratorio) */
+.modern-spinner {
+    width: 42px;
+    height: 42px;
+    border: 4px solid #e2e8f0;
+    border-top: 4px solid #007aff; /* Azul principal */
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto;
+}
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+.loader-container {
+    text-align: center;
+    padding: 50px 20px;
+    color: #64748b;
+    font-weight: 500;
+    font-size: 1.1rem;
+}
+
+/* =========================================================
+   DISEÑO PROFESIONAL COMPACTO (PRODUCTOS V3)
+   ========================================================= */
+
+.inventory-group {
+    margin-bottom: 12px;
+}
+
+/* Encabezados de Acordeón */
+.group-accordion-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    border-left-width: 4px;
+    cursor: pointer;
+    background: white;
+    transition: background-color 0.2s;
+    user-select: none;
+}
+.group-accordion-header:hover { filter: brightness(0.97); }
+
+.group-title-area {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.group-chevron {
+    color: #94a3b8;
+    font-size: 0.75rem;
+    transition: transform 0.3s ease;
+    display: inline-block;
+}
+.group-total-badge {
+    background: white;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    border: 1px solid;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+}
+
+/* Contenedor y Tarjetas Compactas */
+.group-accordion-content {
+    padding: 10px 0 10px 10px; /* Indentación visual sutil */
+}
+
+.product-card-compact {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+    transition: border-color 0.2s;
+}
+.product-card-compact:hover { border-color: #cbd5e1; }
+
+.card-indicator {
+    position: absolute;
+    left: 0; top: 0; bottom: 0; width: 3px;
+}
+
+.card-header-compact {
+    padding: 12px 16px 12px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+}
+
+.info-main .prod-title {
+    margin: 0 0 2px 0;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #1e293b;
+}
+.info-main .prod-meta {
+    font-size: 0.75rem;
+    color: #64748b;
+}
+
+.info-actions {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+.prod-stock {
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: #0f172a;
+}
+.prod-stock span { font-size: 0.75rem; color: #64748b; font-weight: 600; }
+
+.btn-detalles-compact {
+    background: transparent;
+    border: 1px solid #cbd5e1;
+    color: #475569;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+/* Tabla de Detalles Interna */
+.card-body-compact {
+    border-top: 1px solid #f1f5f9;
+    background: #f8fafc;
+    padding: 12px 16px;
+}
+.table-compact {
+    width: 100%;
+    border-collapse: collapse;
+}
+.table-compact th {
+    text-align: left;
+    font-size: 0.7rem;
+    color: #94a3b8;
+    text-transform: uppercase;
+    padding-bottom: 6px;
+    border-bottom: 1px solid #e2e8f0;
+}
+.table-compact td {
+    padding: 8px 0;
+    font-size: 0.85rem;
+    color: #334155;
+    border-bottom: 1px dashed #e2e8f0;
+}
+.table-compact tr:last-child td { border-bottom: none; }
+
+.td-ubic { font-weight: 600; color: #475569; }
+.td-pres { color: #334155; }
+.lote-tag {
+    background: #fef3c7;
+    color: #b45309;
+    border: 1px solid #fde68a;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 0.8rem;
+}
+.alias-tag {
+    display: inline-block;
+    background: #e2e8f0;
+    color: #475569;
+    font-size: 0.7rem;
+    padding: 1px 6px;
+    border-radius: 4px;
+    margin-top: 2px;
+}
+.td-cad { font-size: 0.8rem; color: #64748b; }
+.td-cant { text-align: right; font-weight: 700; color: #0f172a; }
+
+/* --- RESPONSIVE MOBILE --- */
+@media only screen and (max-width: 600px) {
+    .card-header-compact {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+    .info-actions {
+        width: 100%;
+        justify-content: space-between;
+    }
+    
+    .table-compact thead { display: none; }
+    .table-compact tr {
+        display: flex;
+        flex-direction: column;
+        background: white;
+        padding: 10px;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        margin-bottom: 8px;
+    }
+    .table-compact td {
+        display: flex;
+        justify-content: space-between;
+        border: none;
+        padding: 4px 0;
+    }
+    .table-compact td::before { color:#94a3b8; font-size:0.75rem; font-weight:600; }
+    
+    .table-compact td:nth-child(1)::before { content: "Ubicación:"; }
+    .table-compact td:nth-child(2) { flex-direction: column; align-items: flex-end; }
+    .table-compact td:nth-child(2)::before { content: "Presentación:"; width:100%; text-align:left; margin-bottom:2px;}
+    .table-compact td:nth-child(3)::before { content: "Lote:"; }
+    .table-compact td:nth-child(4)::before { content: "Caducidad:"; }
+    .table-compact td:nth-child(5) { 
+        border-top: 1px dashed #e2e8f0; 
+        margin-top: 4px; 
+        padding-top: 8px; 
+        font-size: 1rem;
+    }
+    .table-compact td:nth-child(5)::before { content: "Stock:"; margin-top:2px; }
+}
+
+/* =========================================================
+   CABECERA DE INVENTARIO (REDDISEÑO)
+   ========================================================= */
+.page-header-container {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 5px 15px rgba(0,0,0,0.02);
+    border: 1px solid #e2e8f0;
+    overflow: hidden; /* Para que los hijos respeten el borde redondeado */
+}
+
+/* --- NIVEL 1: Título y Exportar --- */
+.header-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid #f1f5f9;
+    background: #f8fafc;
+}
+.title-block {
+    display: flex; align-items: center; gap: 10px;
+}
+.title-icon { font-size: 1.8rem; }
+
+.btn-export-modern {
+    background: #059669; /* Verde esmeralda profesional */
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    border-radius: 8px;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(5, 150, 105, 0.2);
+    transition: all 0.2s ease;
+    display: flex; align-items: center; gap: 8px;
+}
+.btn-export-modern:hover { background: #047857; transform: translateY(-1px); }
+.btn-export-modern:active { transform: translateY(0); }
+
+
+/* --- NIVEL 2: Barra de Herramientas --- */
+.toolbar-row {
+    padding: 12px 20px;
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    flex-wrap: wrap;
+    background: white;
+}
+
+/* Buscador Moderno */
+.search-modern-wrapper {
+    flex: 2; /* Toma más espacio */
+    position: relative;
+    min-width: 250px;
+}
+.search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94a3b8;
+    font-size: 0.9rem;
+    pointer-events: none;
+}
+.input-modern-search {
+    width: 100%;
+    padding: 10px 12px 10px 36px; /* Espacio para el icono */
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    color: #334155;
+    background: #f8fafc;
+    transition: all 0.2s;
+    outline: none;
+    box-sizing: border-box; /* IMPORTANTE PARA INPUTS AL 100% */
+}
+.input-modern-search:focus {
+    background: white;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Filtros Toggle */
+.filters-wrapper {
+    flex: 1;
+    display: flex;
+    gap: 10px;
+    min-width: 280px;
+    justify-content: flex-end;
+}
+
+.btn-filter-toggle {
+    background: white;
+    border: 1px solid #e2e8f0;
+    color: #64748b;
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    display: flex; align-items: center; gap: 6px;
+    user-select: none;
+}
+.btn-filter-toggle:hover { background: #f1f5f9; }
+
+/* Estados Activos de los Filtros */
+.btn-filter-toggle.btn-stock.active {
+    background: #fffbeb; border-color: #f59e0b; color: #d97706;
+    box-shadow: 0 1px 2px rgba(245, 158, 11, 0.1);
+}
+.btn-filter-toggle.btn-cad.active {
+    background: #fef2f2; border-color: #ef4444; color: #b91c1c;
+    box-shadow: 0 1px 2px rgba(239, 68, 68, 0.1);
+}
+
+@media only screen and (max-width: 600px) {
+    .header-title-row { flex-direction: column; align-items: flex-start; gap: 12px; }
+    .btn-export-modern { width: 100%; justify-content: center; }
+    .toolbar-row { flex-direction: column; }
+    .search-modern-wrapper, .filters-wrapper { width: 100%; min-width: 0; }
+    .filters-wrapper { justify-content: space-between; }
+    .btn-filter-toggle { flex: 1; justify-content: center; }
+}
+
+/* =========================================================
+   BARRA DE HERRAMIENTAS DE INVENTARIO (PERFECT PIXEL)
+   ========================================================= */
+.inventory-toolbar {
+    display: flex;
+    gap: 12px;
+    align-items: center; /* ESTO CENTRA TODO VERTICALMENTE A LA PERFECCIÓN */
+    padding: 15px 25px;
+    flex-wrap: nowrap;
+    overflow-x: auto; 
+}
+
+/* --- Botones de Filtro --- */
+.toolbar-filters {
+    display: flex;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.toolbar-btn {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    color: #334155;
+    padding: 0 16px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s ease; /* LA ANIMACIÓN FLUIDA ESTÁ AQUÍ */
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: 40px; /* ALTURA FIJA ESTRICTA */
+    box-sizing: border-box;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+    white-space: nowrap;
+}
+.toolbar-btn:hover { background: #f8fafc; }
+
+/* Estados Activos (Cuando haces clic) */
+.toolbar-btn.btn-stock .icon { color: #f59e0b; font-size: 1rem; transition: transform 0.2s; }
+.toolbar-btn.btn-stock.active {
+    background: #fffbeb;
+    border-color: #f59e0b;
+    color: #d97706;
+    box-shadow: inset 0 0 0 1px #f59e0b;
+}
+
+.toolbar-btn.btn-cad .icon { color: #d97706; font-size: 1rem; transition: transform 0.2s; }
+.toolbar-btn.btn-cad.active {
+    background: #fef2f2;
+    border-color: #ef4444;
+    color: #b91c1c;
+    box-shadow: inset 0 0 0 1px #ef4444;
+}
+
+/* Efecto de presionar */
+.toolbar-btn:active { transform: scale(0.97); }
+
+/* --- Buscador --- */
+.toolbar-search {
+    flex: 1;
+    min-width: 200px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    height: 40px; /* MISMA ALTURA FIJA ESTRICTA */
+}
+.toolbar-search .search-icon {
+    position: absolute;
+    left: 14px;
+    color: #64748b;
+    font-size: 0.95rem;
+    pointer-events: none;
+}
+.search-input-box {
+    margin: 0;
+    border: 1px solid #e2e8f0;
+    height: 100%; /* Se adapta a los 40px del padre */
+    width: 100%;
+    padding: 0 15px 0 40px;
+    box-sizing: border-box;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    outline: none;
+    color: #334155;
+    background: #ffffff;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.01);
+    transition: all 0.2s;
+    font-family: inherit;
+}
+.search-input-box:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* --- Botón Excel --- */
+.toolbar-btn-export {
+    background: #22c55e;
+    color: white;
+    border: none;
+    padding: 0 20px;
+    height: 40px; /* MISMA ALTURA FIJA ESTRICTA */
+    font-size: 0.9rem;
+    font-weight: 700;
+    border-radius: 8px;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(34, 197, 94, 0.25);
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+    box-sizing: border-box;
+    flex-shrink: 0;
+}
+.toolbar-btn-export:hover { background: #16a34a; transform: translateY(-1px); }
+.toolbar-btn-export:active { transform: translateY(0); }
+.toolbar-btn-export .icon { font-size: 1.05rem; }
+
+/* Animación moderna de "Cargando" para botones */
+.loading-dots::after {
+  content: '';
+  display: inline-block;
+  animation: typing-dots 1.5s steps(4, end) infinite;
+  width: 1em;
+  text-align: left;
+}
+
+@keyframes typing-dots {
+  0% { content: ''; }
+  25% { content: '.'; }
+  50% { content: '..'; }
+  75% { content: '...'; }
+  100% { content: ''; }
+}
+
+/* Efecto de pulso suave para el botón mientras carga */
+.btn-pulsing {
+  animation: btn-pulse 1.5s infinite;
+  pointer-events: none; /* Bloquea clics extra */
+  opacity: 0.8;
+}
+
+@keyframes btn-pulse {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(0, 122, 255, 0.4); }
+  50% { transform: scale(0.98); box-shadow: 0 0 0 10px rgba(0, 122, 255, 0); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(0, 122, 255, 0); }
+}
+
+/* =========================================================
+   ESTILOS DEL CATÁLOGO TÉCNICO Y MODO VERSUS
+   ========================================================= */
+
+.catalogo-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+    padding-bottom: 20px;
+}
+
+.cat-card {
+    background: white; border-radius: 12px; border: 1px solid #e2e8f0; padding: 20px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.02); transition: transform 0.2s; cursor: pointer;
+}
+.cat-card:hover { transform: translateY(-4px); box-shadow: 0 10px 15px rgba(0,0,0,0.05); }
+
+/* Clases de poder basadas en la imagen (Mapa de Calor) */
+.lvl-4 { background-color: #81c784 !important; color: #064e3b !important; font-weight: 800; } /* Verde Fuerte (++++) */
+.lvl-3 { background-color: #c8e6c9 !important; color: #064e3b !important; font-weight: 800; } /* Verde Claro (+++) */
+.lvl-2 { background-color: #ffb74d !important; color: #78350f !important; font-weight: 800; } /* Naranja (++) */
+.lvl-1 { background-color: #ef5350 !important; color: #7f1d1d !important; font-weight: 800; } /* Rojo (+) */
+.lvl-0 { background-color: #f1f5f9 !important; color: #94a3b8 !important; font-weight: bold; } /* N/A */
+
+.btn-video-proof {
+    background: #ef4444; color: white; border-radius: 6px; padding: 4px 10px;
+    font-size: 0.75rem; cursor: pointer; border: none; font-weight: bold;
+    display: inline-flex; align-items: center; gap: 4px; box-shadow: 0 2px 4px rgba(239,68,68,0.3);
+}
+.btn-video-proof:hover { background: #dc2626; }
+
+/* =========================================================
+   ESTILOS PREMIUM PARA EL ASESOR INTELIGENTE (MATCHMAKER)
+   ========================================================= */
+
+/* Sliders personalizados (Rango) */
+.slider-premium {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 8px;
+    border-radius: 5px;
+    background: #e2e8f0;
+    outline: none;
+    transition: background 0.1s;
+    margin: 15px 0;
+}
+.slider-premium::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #7e22ce;
+    cursor: pointer;
+    border: 3px solid white;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+    transition: transform 0.1s;
+}
+.slider-premium::-webkit-slider-thumb:hover { transform: scale(1.15); }
+
+/* Tarjetas de controles a la izquierda */
+.card-control-asesor {
+    background: white;
+    padding: 15px 18px;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+    margin-bottom: 12px;
+    position: relative;
+    transition: border-color 0.2s;
+}
+.card-control-asesor:hover { border-color: #c084fc; }
+
+/* Botones de acción del asesor */
+.btn-add-premium {
+    background: #f3e8ff; color: #6b21a8; border: 1px solid #e9d5ff; border-radius: 10px;
+    font-weight: 800; padding: 0 20px; cursor: pointer; height: 42px; white-space: nowrap;
+    transition: all 0.2s; box-sizing: border-box; display: flex; align-items: center; justify-content: center;
+}
+.btn-add-premium:hover { background: #e9d5ff; transform: translateY(-1px); box-shadow: 0 4px 6px rgba(107, 33, 168, 0.1); }
+
+/* Tarjetas de resultados a la derecha */
+.card-result-asesor {
+    background: white; border: 1px solid #cbd5e1; border-radius: 16px; padding: 20px;
+    box-shadow: 0 6px 12px rgba(0,0,0,0.03); transition: all 0.25s ease; cursor: pointer;
+    position: relative; overflow: hidden;
+}
+.card-result-asesor:hover { transform: translateY(-4px); border-color: #94a3b8; box-shadow: 0 12px 20px rgba(0,0,0,0.06); }
+
+</style>
+
+

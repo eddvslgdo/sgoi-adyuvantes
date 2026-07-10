@@ -1,0 +1,302 @@
+// ==========================================
+// LÓGICA DE ENTRADAS (PRO)
+// ==========================================
+
+function calcularTotalEntrada() {
+  var total = (typeof calcTotalGenerico === 'function')
+    ? calcTotalGenerico("presentacion", "cantidad")
+    : 0;
+    
+  // Buscar unidad real (L, Kg o Pza)
+  var unidad = "L";
+  var prodId = document.getElementById("producto").value;
+  if(window.CACHE_CATALOGOS && prodId) {
+      var prodData = window.CACHE_CATALOGOS.productos.find(x => x.id === prodId);
+      if(prodData && prodData.unidad) {
+          let uLow = prodData.unidad.toLowerCase();
+          if (uLow.includes("unid") || uLow.includes("pza") || uLow.includes("pieza")) unidad = "Pza";
+          else if (uLow.includes("kg") || uLow.includes("kilo")) unidad = "Kg";
+      }
+  }
+  
+  var el = document.getElementById("infoTotal");
+  if(el) {
+      if (unidad === 'Pza') {
+         el.innerText = Math.round(total) + " " + unidad;
+      } else {
+         el.innerText = total.toFixed(2) + " " + unidad;
+      }
+  }
+  return { total: total, unidad: unidad };
+}
+
+function guardarEntradaDirecta() {
+  var item = construirObjetoEntrada();
+  if (!item) return;
+  
+  Swal.fire({ title: 'Procesando...', text: 'Registrando entrada en almacén...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
+  
+  google.script.run
+    .withSuccessHandler(function() {
+      Swal.fire("¡Éxito!", "Entrada registrada correctamente.", "success");
+      limpiarFormularioEntrada();
+      if(typeof recargarSelectores === 'function') recargarSelectores();
+      if(typeof cargarHistorialEntradas === 'function') cargarHistorialEntradas();
+    })
+    .withFailureHandler(function(err) {
+      Swal.fire("Error", err.message, "error");
+    })
+    .registrarEntradaUnica(item);
+}
+
+function agregarColaEntrada() {
+  var item = construirObjetoEntrada();
+  if (!item) return;
+  
+  if(typeof COLA_ENTRADAS !== 'undefined') {
+      COLA_ENTRADAS.push(item);
+      renderizarColaEntrada();
+  }
+  
+  // Bloquear botón directo
+  var btnDir = document.getElementById("btn-entrada-directa");
+  if(btnDir) { btnDir.disabled = true; btnDir.style.opacity = '0.5'; }
+  
+  // Limpieza parcial
+  ["cantidad", "lote", "producto_search", "producto"].forEach(function(id) { 
+      var e = document.getElementById(id); if(e) e.value = ""; 
+  });
+  
+  var info = document.getElementById("infoTotal");
+  if(info) info.innerText = "0 L";
+  
+  mostrarToast("Agregado a la lista de ingreso", "success");
+}
+
+function eliminarEnt(index) {
+  COLA_ENTRADAS.splice(index, 1);
+  renderizarColaEntrada();
+  
+  // Desbloquear si está vacío
+  if(COLA_ENTRADAS.length === 0) {
+      var btnDir = document.getElementById("btn-entrada-directa");
+      if(btnDir) { btnDir.disabled = false; btnDir.style.opacity = '1'; }
+  }
+}
+
+function construirObjetoEntrada() {
+  var calculo = calcularTotalEntrada();
+  if (!(calculo.total > 0)) { mostrarToast("Cantidad inválida", "error"); return null; }
+  
+  var elLote = document.getElementById("lote");
+  var lote = elLote ? elLote.value.trim() : "";
+  if (!lote) { mostrarToast("Falta el Lote", "error"); if(elLote) elLote.focus(); return null; }
+  
+  var pId = document.getElementById("producto").value;
+  var pName = document.getElementById("producto_search").value;
+  if (!pId) { mostrarToast("Selecciona un producto válido", "warning"); return null; }
+  
+  var fabRaw = document.getElementById("elaboracion") ? document.getElementById("elaboracion").value : "";
+  var fab = fabRaw;
+  
+  if (fabRaw && fabRaw.length === 7) {
+      fab = fabRaw + "-01"; 
+  }
+
+  return {
+    producto_id: pId,
+    nombre_producto: pName,
+    presentacion_id: document.getElementById("presentacion").value,
+    nombre_presentacion: getTextoSelect("presentacion"),
+    ubicacion_id: document.getElementById("ubicacion").value,
+    nombre_ubicacion: getTextoSelect("ubicacion"),
+    volumen_L: calculo.total,
+    unidad_medida: calculo.unidad,
+    piezas: document.getElementById("cantidad").value,
+    lote: lote,
+    proveedor: document.getElementById("proveedor").value,
+    fecha_elaboracion: fab, 
+    fecha_caducidad: "" 
+  };
+}
+
+function limpiarFormularioEntrada() {
+  ["cantidad", "lote", "proveedor", "elaboracion", "producto", "producto_search", "presentacion", "ubicacion"].forEach(id => { 
+      var e = document.getElementById(id); if(e) e.value = ""; 
+  });
+  var info = document.getElementById("infoTotal");
+  if(info) info.innerText = "0 L";
+  
+  var btnDir = document.getElementById("btn-entrada-directa");
+  if(btnDir) { btnDir.disabled = false; btnDir.style.opacity = '1'; }
+
+  var infoDiv = document.getElementById("info-contextual-entrada");
+  if (infoDiv) infoDiv.style.display = "none";
+}
+
+function procesarEntradas() {
+  if (typeof COLA_ENTRADAS === 'undefined' || COLA_ENTRADAS.length === 0) return;
+  var lbl = document.getElementById("lblCantMasiva");
+  if(lbl) lbl.innerText = COLA_ENTRADAS.length + " partidas";
+  abrirModalGenerico("modalConfirmarMasivo");
+}
+
+function renderizarColaEntrada() {
+  if(typeof COLA_ENTRADAS !== 'undefined' && typeof renderColaGenerica === 'function') {
+      renderColaGenerica(COLA_ENTRADAS, "area-cola-entradas", "tablaColaEntradaBody", "contadorColaEnt", "ent");
+  }
+}
+
+function ejecutarGuardadoMasivo() {
+  if (typeof COLA_ENTRADAS === 'undefined' || COLA_ENTRADAS.length === 0) return;
+  cerrarModalGenerico("modalConfirmarMasivo");
+
+  Swal.fire({ title: 'Procesando...', text: 'Ingresando lotes al almacén...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
+
+  google.script.run
+    .withSuccessHandler(function() {
+      logActividad("ENTRADA MASIVA", `Ingresó ${COLA_ENTRADAS.length} lotes nuevos al almacén.`);
+       COLA_ENTRADAS = []; 
+       renderizarColaEntrada();
+       limpiarFormularioEntrada();
+       Swal.fire("¡Éxito!", "Ingreso Masivo completado.", "success");
+       if(typeof cargarDashboardProductos === 'function') cargarDashboardProductos();
+       if(typeof recargarSelectores === 'function') recargarSelectores();
+       if(typeof cargarHistorialEntradas === 'function') cargarHistorialEntradas();
+    })
+    .withFailureHandler(function(err) {
+       Swal.fire("Error", err.message, "error");
+       abrirModalGenerico("modalConfirmarMasivo");
+    })
+    .registrarEntradaMasiva(COLA_ENTRADAS);
+}
+
+// ==========================================
+// RENDERIZADO DEL HISTORIAL DE ENTRADAS (MINI-KARDEX)
+// ==========================================
+window.cargarHistorialEntradas = function() {
+    const contenedor = document.getElementById("contenedor-tabla-entradas");
+    if (!contenedor) return;
+    
+    contenedor.innerHTML = `
+        <div style="text-align: center; padding: 40px; color: #64748b;">
+            <div class="modern-spinner"></div>
+            <p style="margin-top: 15px;">Calculando auditoría de ingresos...</p>
+        </div>`;
+
+    google.script.run
+        .withSuccessHandler(res => {
+            if (!res || !res.success) {
+                let err = res ? res.error : "Error de conexión con el servidor.";
+                contenedor.innerHTML = `<div style="color: #dc2626; padding: 20px; background: #fee2e2; border-radius: 8px; text-align: center;">Error al cargar: ${err}</div>`;
+                return;
+            }
+
+            let data = res.data;
+            if (!data || data.length === 0) {
+                contenedor.innerHTML = `<div style="padding: 20px; text-align: center; color: #64748b; background: white; border-radius: 8px;">No hay registros de entradas en el historial.</div>`;
+                return;
+            }
+            
+            let html = `<div id="lista-auditoria-entradas" style="display:flex; flex-direction:column; gap:12px; padding-bottom:20px;">`;
+            
+            data.forEach((p, index) => {
+                // Matemática de Auditoría
+                let salidasIncomprobables = p.total_ingresado - p.stock_vigente;
+                salidasIncomprobables = Math.max(0, salidasIncomprobables);
+
+                let uni = p.unidad;
+                let displayVigente = (uni === 'Pza') ? Math.round(p.stock_vigente) : p.stock_vigente.toFixed(2);
+                let displayIngresado = (uni === 'Pza') ? Math.round(p.total_ingresado) : p.total_ingresado.toFixed(2);
+                let displaySalidas = (uni === 'Pza') ? Math.round(salidasIncomprobables) : salidasIncomprobables.toFixed(2);
+
+                let idGrupo = `audit-ent-${index}`;
+
+                html += `
+                <div class="tarjeta-auditoria" style="background: white; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 2px 4px rgba(0,0,0,0.02); overflow: hidden;">
+                    
+                    <div onclick="document.getElementById('${idGrupo}').style.display = document.getElementById('${idGrupo}').style.display === 'none' ? 'block' : 'none';" 
+                         style="padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; background: #f8fafc; transition: background 0.2s;"
+                         onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='#f8fafc'">
+                        
+                        <h4 style="margin: 0; color: #1e293b; font-size: 1.1rem; font-weight: 800; display: flex; align-items: center; gap: 8px;">
+                            📦 <span class="lbl-producto">${p.nombre}</span>
+                        </h4>
+
+                        <div style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap; justify-content: flex-end;">
+                            <div style="text-align: right;">
+                                <div style="font-size: 0.7rem; color: #64748b; font-weight: 700; text-transform: uppercase;">Total Ingresado</div>
+                                <div style="color: #0ea5e9; font-weight: 900; font-size: 1rem;">${displayIngresado} <span style="font-size:0.75rem;">${uni}</span></div>
+                            </div>
+                            <div style="text-align: right; border-left: 1px solid #cbd5e1; padding-left: 15px;">
+                                <div style="font-size: 0.7rem; color: #64748b; font-weight: 700; text-transform: uppercase;">Enviado / Mermado</div>
+                                <div style="color: #ef4444; font-weight: 900; font-size: 1rem;">${displaySalidas} <span style="font-size:0.75rem;">${uni}</span></div>
+                            </div>
+                            <div style="text-align: right; border-left: 1px solid #cbd5e1; padding-left: 15px;">
+                                <div style="font-size: 0.7rem; color: #64748b; font-weight: 700; text-transform: uppercase;">Stock Vigente</div>
+                                <div style="color: #10b981; font-weight: 900; font-size: 1.1rem;">${displayVigente} <span style="font-size:0.75rem;">${uni}</span></div>
+                            </div>
+                            <div style="color: #94a3b8; font-size: 0.8rem; margin-left: 10px;">▼</div>
+                        </div>
+                    </div>
+
+                    <div id="${idGrupo}" style="display: none; border-top: 1px solid #e2e8f0;">
+                        <div style="max-height: 250px; overflow-y: auto;">
+                            <table class="modern-table" style="width: 100%; border-collapse: collapse; margin: 0;">
+                                <thead style="background: #f1f5f9; position: sticky; top: 0; z-index: 5;">
+                                    <tr>
+                                        <th style="padding: 10px 15px; font-size: 0.75rem;">Fecha de Ingreso</th>
+                                        <th style="padding: 10px 15px; font-size: 0.75rem;">Presentación</th>
+                                        <th style="padding: 10px 15px; font-size: 0.75rem;">Lote</th>
+                                        <th style="padding: 10px 15px; font-size: 0.75rem;">Ubicación Destino</th>
+                                        <th style="padding: 10px 15px; font-size: 0.75rem; text-align: right;">Cant. Entró</th>
+                                    </tr>
+                                </thead>
+                                <tbody>`;
+                                
+                p.historial.forEach(h => {
+                    let hCant = (uni === 'Pza') ? Math.round(h.cantidad) : Number(h.cantidad).toFixed(2);
+                    html += `
+                                    <tr style="border-bottom: 1px solid #f1f5f9; background: white;">
+                                        <td style="padding: 10px 15px; font-size: 0.85rem; color: #64748b; white-space: nowrap;">${h.fecha}</td>
+                                        <td style="padding: 10px 15px; font-size: 0.85rem; color: #334155;">${h.presentacion}</td>
+                                        <td style="padding: 10px 15px;"><span style="font-family:monospace; font-weight:bold; color:#d97706; background:#fffbeb; border:1px solid #fde68a; padding:2px 6px; border-radius:4px;">${h.lote}</span></td>
+                                        <td style="padding: 10px 15px; font-size: 0.85rem; color: #64748b;">${h.ubicacion}</td>
+                                        <td style="padding: 10px 15px; font-size: 0.95rem; font-weight: bold; color: #0ea5e9; text-align: right;">+${hCant} <span style="font-size:0.75rem; color:#888;">${uni}</span></td>
+                                    </tr>`;
+                });
+
+                html += `       </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>`;
+            });
+            
+            html += `</div>`;
+            contenedor.innerHTML = html;
+        })
+        .withFailureHandler(err => {
+            contenedor.innerHTML = `<div style="color: #dc2626; padding: 20px; background: #fee2e2; border-radius: 8px; text-align: center;">Error al conectar: ${err.message}</div>`;
+        })
+        .obtenerHistorialEntradas();
+};
+
+// ==========================================
+// BUSCADOR EN VIVO DE AUDITORÍA
+// ==========================================
+window.filtrarHistorialEntradas = function() {
+    let input = document.getElementById("buscador-historial-entradas");
+    if (!input) return;
+    let txt = input.value.toLowerCase().trim();
+    
+    let tarjetas = document.querySelectorAll(".tarjeta-auditoria");
+    
+    tarjetas.forEach(card => {
+        if (card.innerText.toLowerCase().includes(txt)) {
+            card.style.display = "";
+        } else {
+            card.style.display = "none";
+        }
+    });
+};

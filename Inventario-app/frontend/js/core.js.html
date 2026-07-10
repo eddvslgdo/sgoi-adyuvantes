@@ -1,0 +1,548 @@
+// core.js.html - Versión con Limpieza Total de Tablas y Carritos
+
+window.cambiarVista = function (vistaId) {
+  // 1. Ocultar vistas
+  document.querySelectorAll('.vista').forEach(v => v.style.display = 'none');
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+
+  // 2. Mostrar vista seleccionada
+  const vista = document.getElementById(vistaId);
+  if (vista) vista.style.display = 'flex';
+
+  // 3. Resaltar botón
+  document.querySelectorAll('.nav-btn').forEach(btn => {
+    if (btn.getAttribute('onclick') && btn.getAttribute('onclick').includes(vistaId)) {
+      btn.classList.add('active');
+    }
+  });
+
+  // --- 4. LÓGICA DE CARGA Y LIMPIEZA POR PESTAÑA ---
+
+if (vistaId === 'vista-operacion') {
+      if (typeof recargarSelectores === 'function') recargarSelectores(); // <--- Auto actualiza al entrar
+      if (typeof cargarHistorialEntradas === 'function') cargarHistorialEntradas();
+      if (typeof COLA_ENTRADAS !== 'undefined') {
+          COLA_ENTRADAS = [];
+          if (typeof renderizarColaEntrada === 'function') renderizarColaEntrada();
+      }
+      if (typeof limpiarFormularioEntrada === 'function') limpiarFormularioEntrada();
+  }
+
+  if (vistaId === 'vista-salidas') {
+      if (typeof recargarSelectores === 'function') recargarSelectores();
+      // LIMPIEZA TOTAL DE SALIDAS (Borra carrito, tabla de disponibilidad y campos)
+      if (typeof iniciarVistaSalidas === 'function') iniciarVistaSalidas(); 
+  }
+
+  if (vistaId === 'vista-bajas') {
+      // LIMPIEZA TOTAL DE BAJAS (Vaciamos la cola y renderizamos en blanco)
+      if (typeof COLA_BAJAS !== 'undefined') {
+          COLA_BAJAS = [];
+          if (typeof renderColaBajas === 'function') renderColaBajas();
+      }
+      if (typeof cargarCaducados === 'function') cargarCaducados();
+  }
+
+  if (vistaId === 'vista-ubicaciones' && typeof cargarDashboardUbicaciones === 'function') cargarDashboardUbicaciones();
+  if (vistaId === 'vista-productos' && typeof cargarDashboardProductos === 'function') cargarDashboardProductos();
+  if (vistaId === 'vista-pedidos' && typeof cargarDashboardPedidos === 'function') cargarDashboardPedidos();
+  if (vistaId === 'vista-admin' && typeof cargarDashboardAdmin === 'function') cargarDashboardAdmin();
+  if (vistaId === 'vista-dashboard' && typeof cargarDashboardPrincipal === 'function') cargarDashboardPrincipal();
+  if (vistaId === 'vista-clientes') cargarDashboardClientes();
+  if (vistaId === 'vista-catalogo' && typeof cargarDashboardCatalogo === 'function') cargarDashboardCatalogo();
+};
+
+function recargarSelectores() {
+  mostrarCargando("Actualizando catálogos..."); 
+
+  if(typeof api !== 'undefined') api.obtenerCatalogos(function(data){
+      llenarSelects(data);
+  });
+  
+  if(typeof api !== 'undefined') {
+      google.script.run.withSuccessHandler((c) => {
+        LISTA_CLIENTES = c;
+        window.CLIENTES_CACHE = c; // <--- LA LÍNEA MÁGICA PARA EL CRM
+        if(typeof llenarSelectClientes === 'function') llenarSelectClientes();
+        ocultarCargando(); 
+      }).obtenerListaClientes();
+  }
+}
+
+function llenarSelects(data) {
+  window.CACHE_CATALOGOS = data; 
+
+  // Llenar recomendaciones para el Inventario Global
+  let dlGlobal = document.getElementById("lista-productos-global");
+  if(dlGlobal) {
+      dlGlobal.innerHTML = "";
+      data.productos.forEach(p => {
+          let opt = document.createElement("option");
+          opt.value = p.nombre; dlGlobal.appendChild(opt);
+      });
+  }
+  
+  // 1. Llenar Autocomplete de ENTRADAS (Todos los productos)
+  let dlEnt = document.getElementById("lista-productos-datalist");
+  if(dlEnt) {
+     dlEnt.innerHTML = "";
+     data.productos.forEach(p => {
+         let opt = document.createElement("option");
+         opt.value = p.nombre;
+         dlEnt.appendChild(opt);
+     });
+  }
+
+  // 2. Llenar Autocomplete de SALIDAS (SOLO LOS QUE TIENEN STOCK > 0)
+  let dlSal = document.getElementById("lista-productos-salida-datalist");
+  if(dlSal) {
+     dlSal.innerHTML = "";
+     const productosConStock = data.productos.filter(p => p.stockTotal > 0.001);
+     productosConStock.forEach(p => {
+         let opt = document.createElement("option");
+         opt.value = p.nombre;
+         dlSal.appendChild(opt);
+     });
+  }
+  // 1. Entradas: Muestra TODOS los productos
+  poblarSelect("producto", data.productos);
+  poblarSelect("ubicacion", data.ubicaciones);
+
+  var fnEntrada = (typeof calcularTotalEntrada === 'function') ? calcularTotalEntrada : function(){ console.warn("Fn Entrada no cargada"); return 0; };
+  setupPresentacion("presentacion", data.presentaciones, fnEntrada);
+
+  // 2. Salidas: FILTRAMOS PARA MOSTRAR SOLO LOS QUE TIENEN STOCK (> 0)
+  const productosConStock = data.productos.filter(p => p.stockTotal > 0.001);
+  poblarSelect("sal_producto", productosConStock);
+  
+  poblarSelect("sal_ubicacion", data.ubicaciones);
+
+  var fnSalida = (typeof calcularTotalSalida === 'function') ? calcularTotalSalida : function(){ console.warn("Fn Salida no cargada"); return 0; };
+  setupPresentacion("sal_presentacion", data.presentaciones, fnSalida);
+
+  // 3. Transformaciones: Muestra TODOS los productos 
+  if (document.getElementById("selTransfNuevoProd"))
+    poblarSelect("selTransfNuevoProd", data.productos);
+  if (document.getElementById("selTransfNuevaPres"))
+    setupPresentacion("selTransfNuevaPres", data.presentaciones, null);
+
+  // 4. Documentos Libres: Llenar Select de Presentaciones
+  if (document.getElementById("dl_presentacion"))
+      setupPresentacion("dl_presentacion", data.presentaciones, null);
+
+  // Reactivar eventos
+  const selProdSalida = document.getElementById("sal_producto");
+  if (selProdSalida) {
+    const nuevoSel = selProdSalida.cloneNode(true);
+    selProdSalida.parentNode.replaceChild(nuevoSel, selProdSalida);
+    if (typeof aplicarFIFO === 'function') {
+        nuevoSel.addEventListener("change", aplicarFIFO);
+    }
+  }
+}
+
+function llenarSelectClientes() {
+  const sel = document.getElementById("log_cliente_select");
+  const dlExt = document.getElementById("lista-clientes-ext"); 
+
+  if (sel) sel.innerHTML = '<option value="">-- Nuevo / Manual --</option>';
+  if (dlExt) dlExt.innerHTML = '';
+
+  // FIX: Ahora lee correctamente de la nueva caché de clientes
+  let clientesData = window.CLIENTES_CACHE || (typeof LISTA_CLIENTES !== 'undefined' ? LISTA_CLIENTES : []);
+
+  if(clientesData && clientesData.length > 0){
+      let empresasAgregadas = new Set();
+
+      clientesData.forEach((c) => {
+        // 1. Llenar el select del checkout normal
+        if (sel) {
+            const opt = document.createElement("option");
+            opt.value = c.id;
+            
+            let nombre = c.nombre || "Sin Nombre";
+            let empresa = (c.empresa && c.empresa.trim() !== "") ? `[${c.empresa}]` : "";
+            // Leemos la primera dirección del JSON o la antigua
+            let dirPrincipal = (c.direcciones && c.direcciones.length > 0) ? c.direcciones[0] : (c.direccion || "Sin dirección");
+            
+            if (dirPrincipal.length > 35) dirPrincipal = dirPrincipal.substring(0, 35) + "...";
+            
+            opt.text = `${nombre} ${empresa} - ${dirPrincipal}`;
+            sel.appendChild(opt);
+        }
+
+        // 2. Llenar el Datalist del Gasto Logístico Externo
+        if (dlExt) {
+            let nomEmpresa = (c.empresa && c.empresa.trim() !== "") ? c.empresa.trim() : c.nombre.trim();
+            if (nomEmpresa && !empresasAgregadas.has(nomEmpresa)) {
+                empresasAgregadas.add(nomEmpresa);
+                const optDl = document.createElement("option");
+                optDl.value = nomEmpresa;
+                dlExt.appendChild(optDl);
+            }
+        }
+      });
+  }
+}
+
+function poblarSelect(id, lista) {
+  const select = document.getElementById(id);
+  if (!select) return;
+  select.innerHTML = '<option value="">Selecciona...</option>';
+  if(lista){
+      lista.forEach((item) => {
+        const option = document.createElement("option");
+        option.value = item.id;
+        option.text = item.nombre;
+        select.appendChild(option);
+      });
+  }
+}
+
+function setupPresentacion(idSelect, lista, funcionCalculo) {
+  const select = document.getElementById(idSelect);
+  if (!select) return;
+  const newSelect = select.cloneNode(false);
+  select.parentNode.replaceChild(newSelect, select);
+  newSelect.id = idSelect;
+  newSelect.className = "input-modern";
+  newSelect.innerHTML = '<option value="">Selecciona...</option>';
+  
+  if (typeof funcionCalculo === 'function') {
+      newSelect.addEventListener("change", funcionCalculo);
+  }
+  
+  if(lista){
+      lista.forEach((item) => {
+        const option = document.createElement("option");
+        option.value = item.id;
+        option.text = item.nombre;
+        option.setAttribute("data-volumen", item.volumen || 0);
+        newSelect.appendChild(option);
+      });
+  }
+}
+
+function getTextoSelect(id) {
+  const s = document.getElementById(id);
+  return s && s.options.length > 0 && s.selectedIndex >= 0
+    ? s.options[s.selectedIndex].text
+    : "";
+}
+
+// --- 1. BUSCADOR INTELIGENTE ACTUALIZADO ---
+function seleccionarProductoDesdeBusqueda() {
+    let searchVal = document.getElementById('producto_search').value.trim();
+    let hiddenId = document.getElementById('producto');
+    let infoDiv = document.getElementById('info-contextual-entrada'); // El nuevo contenedor
+    
+    if(searchVal === "") {
+        hiddenId.value = "";
+        if(infoDiv) infoDiv.style.display = 'none';
+        filtrarPresentacionesPorUnidad(""); 
+        if(typeof calcularTotalEntrada === 'function') calcularTotalEntrada();
+        return;
+    }
+
+    if(!window.CACHE_CATALOGOS) return;
+    
+    let prod = window.CACHE_CATALOGOS.productos.find(p => p.nombre.toUpperCase() === searchVal.toUpperCase());
+    
+    if(prod) {
+        hiddenId.value = prod.id; 
+        document.getElementById('producto_search').value = prod.nombre; 
+        filtrarPresentacionesPorUnidad(prod.unidad);
+        if(typeof calcularTotalEntrada === 'function') calcularTotalEntrada(); 
+        
+        // --- NUEVO: VISIBILIDAD CONTEXTUAL ---
+        if(infoDiv) {
+            infoDiv.style.display = 'block';
+            infoDiv.innerHTML = '<span style="color:#888;">⏳ Buscando existencias en el almacén...</span>';
+            
+            // Reutilizamos la función FIFO para traer el desglose sin crear código backend nuevo
+            api.obtenerSugerenciaFIFO(prod.id, [], function(jsonResp) {
+                try {
+                    let res = JSON.parse(jsonResp);
+                    if(res.success && res.lista_completa && res.lista_completa.length > 0) {
+                        let html = `<strong style="color:#d97706;">💡 Tienes existencias en ${res.lista_completa.length} ubicación(es):</strong><ul style="margin:5px 0 0 0; padding-left:20px;">`;
+                        res.lista_completa.forEach(lote => {
+                            html += `<li><b>${lote.stock} ${prod.unidad}</b> en <b>${lote.nombre_ubicacion}</b> <span style="font-size:0.75rem; color:#888;">(Lote: ${lote.lote} | ${lote.nombre_presentacion})</span></li>`;
+                        });
+                        html += `</ul>`;
+                        infoDiv.innerHTML = html;
+                    } else {
+                        infoDiv.innerHTML = `<span style="color:#27ae60; font-weight:bold;">✨ Producto sin stock actual. Será un primer ingreso.</span>`;
+                    }
+                } catch(e) {
+                    infoDiv.style.display = 'none';
+                }
+            }, function() { infoDiv.style.display = 'none'; });
+        }
+        // ------------------------------------
+
+    } else {
+        hiddenId.value = "";
+        if(infoDiv) infoDiv.style.display = 'none';
+        Swal.fire({
+            title: 'Producto no encontrado',
+            text: `El producto "${searchVal}" no existe. ¿Deseas registrarlo?`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#007aff',
+            confirmButtonText: 'Sí, crear nuevo'
+        }).then((res) => {
+            if(res.isConfirmed) {
+                document.getElementById("nuevoNombre").value = searchVal.toUpperCase();
+                abrirModalGenerico('modalProducto'); 
+            }
+        });
+        filtrarPresentacionesPorUnidad(""); 
+        if(typeof calcularTotalEntrada === 'function') calcularTotalEntrada();
+    }
+}
+
+// --- 2. FILTRO DINÁMICO DE PRESENTACIONES ---
+function filtrarPresentacionesPorUnidad(unidad) {
+    const select = document.getElementById("presentacion");
+    if (!select || !window.CACHE_CATALOGOS) return;
+
+    // Limpiamos el menú desplegable
+    select.innerHTML = '<option value="">Selecciona...</option>';
+    let presCache = window.CACHE_CATALOGOS.presentaciones;
+
+    // Si no hay unidad (ej. borraron el texto), mostramos todas
+    if (!unidad || unidad === "") {
+        presCache.forEach(p => {
+            let opt = document.createElement("option");
+            opt.value = p.id; opt.text = p.nombre; opt.setAttribute("data-volumen", p.volumen || 0);
+            select.appendChild(opt);
+        });
+        return;
+    }
+
+    let uniStr = String(unidad).toLowerCase().trim();
+    let compatibles = [];
+
+    // 1. Detectar inteligentemente la unidad del producto
+    let categoria = "L"; // Por defecto asumimos líquidos
+    if (uniStr.includes('kg') || uniStr.includes('kilo') || uniStr.includes('gramo')) {
+        categoria = "Kg";
+    } else if (uniStr.includes('unid') || uniStr.includes('pza') || uniStr.includes('pieza') || uniStr.includes('caja')) {
+        categoria = "Pza";
+    }
+
+    // 2. Filtrar la lista de presentaciones en base a la categoría
+    presCache.forEach(p => {
+        let n = p.nombre.toLowerCase();
+        let pasaFiltro = false;
+
+        if (categoria === "Kg") {
+            if (n.includes('kg') || n.includes('kilo') || n.includes('gramo') || n.includes('saco')) pasaFiltro = true;
+        } else if (categoria === "Pza") {
+            if (n.includes('pza') || n.includes('pieza') || n.includes('caja') || n.includes('unid') || n.includes('kit')) pasaFiltro = true;
+        } else {
+            // Líquidos (L) - Busca " l", "ml", "litro", "galon", etc.
+            if (/\bl\b/.test(n) || /[0-9]l\b/.test(n) || n.includes('ml') || n.includes('litro') || n.includes('galón') || n.includes('galon') || n.includes('tambo') || n.includes('cubeta')) pasaFiltro = true;
+        }
+
+        if (pasaFiltro) compatibles.push(p);
+    });
+
+    // 3. SISTEMA ANTI-BLOQUEO: Si el filtro fue demasiado estricto, muestra la lista completa
+    let listaMostrar = compatibles.length > 0 ? compatibles : presCache;
+
+    // Inyectamos las opciones compatibles
+    listaMostrar.forEach(item => {
+        let opt = document.createElement("option");
+        opt.value = item.id;
+        opt.text = item.nombre;
+        opt.setAttribute("data-volumen", item.volumen || 0);
+        select.appendChild(opt);
+    });
+}
+
+// --- LOGICA DEL BUSCADOR DE SALIDAS ---
+function seleccionarProductoSalidaDesdeBusqueda() {
+    let searchVal = document.getElementById('sal_producto_search').value.trim();
+    let hiddenId = document.getElementById('sal_producto');
+    let divDisp = document.getElementById("div-disponibilidad");
+    
+    // Si borran el texto, escondemos la tabla de sugerencias
+    if(searchVal === "") {
+        hiddenId.value = "";
+        if (typeof limpiarCamposSalidaParcial === 'function') limpiarCamposSalidaParcial();
+        if (divDisp) { divDisp.innerHTML = ""; divDisp.style.display = "none"; }
+        return;
+    }
+
+    if(!window.CACHE_CATALOGOS) return;
+    
+    // Buscamos validando que de verdad tenga stock
+    let prod = window.CACHE_CATALOGOS.productos.find(p => p.nombre.toUpperCase() === searchVal.toUpperCase() && p.stockTotal > 0.001);
+    
+    if(prod) {
+        hiddenId.value = prod.id; 
+        document.getElementById('sal_producto_search').value = prod.nombre; 
+        
+        // ¡Si existe y tiene stock, mandamos a dibujar la tabla FIFO!
+        if(typeof aplicarFIFO === 'function') aplicarFIFO(); 
+    } else {
+        // Si escribe algo raro o sin stock, bloqueamos
+        hiddenId.value = "";
+        Swal.fire("Atención", "Este producto no existe o actualmente no tiene stock en el almacén.", "warning");
+        document.getElementById('sal_producto_search').value = "";
+        
+        if (typeof limpiarCamposSalidaParcial === 'function') limpiarCamposSalidaParcial();
+        if (divDisp) { divDisp.innerHTML = ""; divDisp.style.display = "none"; }
+    }
+}
+
+// ==========================================
+// LÓGICA DEL PANEL DE ADMINISTRACIÓN
+// ==========================================
+let CACHE_USUARIOS = [];
+
+function cargarDashboardAdmin() {
+    document.getElementById("loading-admin").style.display = "block";
+    document.getElementById("tablaUsuariosBody").innerHTML = "";
+
+    google.script.run
+      .withSuccessHandler(function (usuarios) {
+          document.getElementById("loading-admin").style.display = "none";
+          CACHE_USUARIOS = usuarios;
+          renderTablaUsuarios();
+      })
+      .withFailureHandler(function (e) {
+          document.getElementById("loading-admin").style.display = "none";
+          Swal.fire("Error", e.message, "error");
+      })
+      .obtenerListaUsuarios();
+}
+
+function renderTablaUsuarios() {
+    const tbody = document.getElementById("tablaUsuariosBody");
+    tbody.innerHTML = "";
+
+    CACHE_USUARIOS.forEach((u, index) => {
+        const tr = document.createElement("tr");
+        
+        let tags = [];
+        if(u.entradas) tags.push("Entradas");
+        if(u.salidas) tags.push("Salidas");
+        if(u.ubicaciones) tags.push("Ubic.");
+        if(u.productos) tags.push("Prod.");
+        if(u.envios) tags.push("Envíos");
+        if(u.bajas) tags.push("Bajas");
+        if(u.historialEntradas) tags.push("Hist. Entradas");
+        
+        let badgesHtml = tags.map(t => `<span style="background:#e0e7ff; color:#3730a3; padding:2px 6px; border-radius:4px; font-size:0.7rem; margin-right:4px;">${t}</span>`).join("");
+        if(tags.length === 0) badgesHtml = `<span style="color:#94a3b8; font-style:italic; font-size:0.8rem;">Sin accesos operativos</span>`;
+
+        let adminBadge = u.esAdmin ? `<span style="background:#fef2f2; color:#dc2626; padding:4px 8px; border-radius:6px; font-weight:bold; font-size:0.75rem;">⭐ Admin</span>` : `<span style="color:#94a3b8;">No</span>`;
+        let validadoBadge = u.validado ? `<span style="color:#10b981; font-weight:bold; font-size:0.8rem;">✅ Validado</span>` : `<span style="color:#f59e0b; font-weight:bold; font-size:0.8rem;">⏳ En Revisión</span>`;
+
+        tr.innerHTML = `
+            <td style="font-weight:bold; color:#1e293b;">${u.correo}<br>${validadoBadge}</td>
+            <td style="text-align:center;">${adminBadge}</td>
+            <td><div style="display:flex; flex-wrap:wrap; gap:4px;">${badgesHtml}</div></td>
+            <td style="text-align:right;">
+                <button onclick="abrirModalUsuario(${index})" class="btn-action btn-move" title="Editar" style="background:#f1f5f9; color:#334155;">✏️</button>
+                <button onclick="eliminarUsuarioAdmin('${u.correo}')" class="btn-action btn-transf" title="Eliminar" style="background:#fef2f2; color:#dc2626;">🗑️</button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+function abrirModalUsuario(index = -1) {
+    const u = index >= 0 ? CACHE_USUARIOS[index] : null;
+
+    // Si es un usuario nuevo (u es null), por defecto nace Validado. Si ya existe, lee su estatus.
+    document.getElementById("chk_validado").checked = u ? u.validado : true;
+    document.getElementById("adm_correo").value = u ? u.correo : "";
+    document.getElementById("adm_correo").disabled = (u != null); // No se puede cambiar el correo una vez creado
+    document.getElementById("adm_pin").value = u ? u.pin : "";
+    
+    document.getElementById("adm_esAdmin").checked = u ? u.esAdmin : false;
+    document.getElementById("pin_hint").style.display = (u && u.esAdmin) ? 'block' : 'none';
+
+    document.getElementById("chk_entradas").checked = u ? u.entradas : false;
+    document.getElementById("chk_salidas").checked = u ? u.salidas : false;
+    document.getElementById("chk_ubicaciones").checked = u ? u.ubicaciones : false;
+    document.getElementById("chk_productos").checked = u ? u.productos : false;
+    document.getElementById("chk_envios").checked = u ? u.envios : false;
+    document.getElementById("chk_bajas").checked = u ? u.bajas : false;
+    document.getElementById("chk_historialEntradas").checked = u ? u.historialEntradas : false;
+    document.getElementById("chk_costos").checked = u ? u.verCostos : false;
+
+    abrirModalGenerico('modalUsuario');
+}
+
+function guardarUsuarioAdmin() {
+    const correo = document.getElementById("adm_correo").value.trim().toLowerCase();
+    const pin = document.getElementById("adm_pin").value.trim();
+    const esAdmin = document.getElementById("adm_esAdmin").checked;
+
+    if (!correo) return Swal.fire("Atención", "El correo es obligatorio.", "warning");
+    if (esAdmin && !pin) return Swal.fire("Atención", "Los administradores deben tener un PIN secreto.", "warning");
+
+    const usuario = {
+        correo: correo,
+        pin: pin,
+        esAdmin: esAdmin,
+        validado: document.getElementById("chk_validado").checked,
+        entradas: document.getElementById("chk_entradas").checked,
+        salidas: document.getElementById("chk_salidas").checked,
+        ubicaciones: document.getElementById("chk_ubicaciones").checked,
+        productos: document.getElementById("chk_productos").checked,
+        envios: document.getElementById("chk_envios").checked,
+        bajas: document.getElementById("chk_bajas").checked,
+        historialEntradas: document.getElementById("chk_historialEntradas").checked,
+        verCostos: document.getElementById("chk_costos").checked
+    };
+
+    cerrarModalGenerico('modalUsuario');
+    Swal.fire({ title: 'Guardando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+    google.script.run
+        .withSuccessHandler(res => {
+            if (res.success) {
+                cargarDashboardAdmin();
+                Swal.fire("¡Listo!", "Usuario guardado correctamente.", "success");
+            } else {
+                Swal.fire("Error", res.error, "error");
+            }
+        })
+        .withFailureHandler(e => Swal.fire("Error", e.message, "error"))
+        .guardarUsuario(usuario);
+}
+
+function eliminarUsuarioAdmin(correo) {
+    Swal.fire({
+        title: '¿Revocar acceso?',
+        text: `El usuario ${correo} ya no podrá entrar al sistema.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc2626',
+        confirmButtonText: 'Sí, eliminar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            Swal.fire({ title: 'Eliminando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+            
+            // Pasamos el correo de la persona que está intentando borrar (para que no te borres a ti mismo)
+            const miCorreo = localStorage.getItem("inventario_email");
+            
+            google.script.run
+                .withSuccessHandler(res => {
+                    if (res.success) {
+                        cargarDashboardAdmin();
+                        Swal.fire("Eliminado", "Acceso revocado.", "success");
+                    } else {
+                        Swal.fire("Denegado", res.error, "error");
+                    }
+                })
+                .withFailureHandler(e => Swal.fire("Error", e.message, "error"))
+                .eliminarUsuario(correo, miCorreo);
+        }
+    });
+}

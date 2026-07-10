@@ -1,0 +1,2599 @@
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+  <?!= include('frontend/js/state.js.html'); ?>
+</script>
+
+<script>
+  <?!= include('frontend/js/api.js.html'); ?>
+</script>
+
+<script>
+  <?!= include('frontend/js/ui.js.html'); ?>
+</script>
+
+<script>
+  <?!= include('frontend/js/core.js.html'); ?>
+</script>
+
+<script>
+  <?!= include('frontend/js/entradas.js.html'); ?>
+</script>
+
+<script>
+  <?!= include('frontend/js/salidas.js.html'); ?>
+</script>
+
+<script>
+  <?!= include('frontend/js/productos.js.html'); ?>
+</script>
+
+<script>
+  <?!= include('frontend/js/main.js.html'); ?>
+
+
+  // Listener de arranque
+  window.addEventListener('load', function() {
+    console.log("✅ Sistema de Inventario Iniciado");
+    if (typeof initApp === 'function') {
+      initApp();
+    } else {
+      console.error("❌ Error: initApp no encontrado");
+    }
+  });
+</script>
+
+<style>
+  /* Diseño de Rejilla Responsiva */
+  #grid-ubicaciones {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+    padding: 10px 0;
+  }
+
+  /* Tarjeta de Ubicación */
+  .card-ubicacion {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    border: 1px solid #e1e4e8;
+    transition: all 0.2s ease;
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .card-ubicacion:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+    border-color: #007aff;
+  }
+
+  /* Cabecera de la Tarjeta */
+  .card-header-ubic {
+    background: #f8f9fa;
+    padding: 12px 15px;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .card-title {
+    font-weight: 700;
+    color: #2c3e50;
+    font-size: 1.05rem;
+    margin: 0;
+  }
+
+  /* Botones de Acción (Editar/Borrar) */
+  .card-actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  .btn-icon-small {
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #666;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+  }
+
+  .btn-icon-small:hover {
+    background: #007aff;
+    color: white;
+    border-color: #007aff;
+  }
+  .btn-icon-small.delete:hover {
+    background: #d63031;
+    color: white;
+    border-color: #d63031;
+  }
+
+  /* Cuerpo de la Tarjeta */
+  .card-body-ubic {
+    padding: 15px;
+    flex: 1;
+    cursor: pointer; /* Solo el cuerpo es clicable para ver detalle */
+  }
+
+  .ubic-badge {
+    background: #e3f2fd;
+    color: #007aff;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: bold;
+    display: inline-block;
+    margin-bottom: 10px;
+  }
+
+  .item-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    font-size: 0.85rem;
+    color: #555;
+  }
+  .item-list li {
+    margin-bottom: 4px;
+    border-bottom: 1px dashed #f0f0f0;
+    padding-bottom: 2px;
+  }
+</style>
+
+<script>
+  // ==========================================
+  // LÓGICA DE MIS UBICACIONES (LIMPIA Y BLINDADA)
+  // ==========================================
+
+  var CACHE_UBICACIONES = [];
+  var TEMP_ACCION = null;
+
+  // --- CARGA INICIAL ---
+  function cargarDashboardUbicaciones() {
+    var grid = document.getElementById("grid-ubicaciones");
+    var loader = document.getElementById("loading-ubicaciones");
+    if (!grid) return;
+
+    grid.classList.add("list-scroll-container");
+    if (loader) {
+      loader.style.display = "block";
+      loader.innerHTML = `
+        <div class="loader-container">
+            <div class="modern-spinner"></div>
+            <div style="margin-top: 15px;">Cargando ubicaciones e inventario...</div>
+        </div>`;
+    }
+    grid.innerHTML = "";
+
+    google.script.run
+      .withSuccessHandler(function (ubicaciones) {
+        CACHE_UBICACIONES = ubicaciones;
+        if (loader) loader.style.display = "none";
+        renderizarGridUbicaciones(ubicaciones);
+      })
+      .withFailureHandler(function (e) {
+        if (loader) loader.style.display = "none";
+        Swal.fire("Error", e.message, "error");
+      })
+      .obtenerDatosUbicaciones();
+
+// --- SEGURIDAD VISUAL INFALIBLE (Escaneo continuo) ---
+    let btnAsistente = document.getElementById("btn-asistente-org");
+    if (btnAsistente) {
+        // El navegador escaneará la pantalla cada cuarto de segundo (250ms)
+        let buscador = setInterval(() => {
+            // 'innerText' es mágico: solo lee el texto que es VISIBLE para el ojo humano
+            if (document.body.innerText.includes('⚙️ Admin')) {
+                btnAsistente.style.display = "inline-flex";
+                clearInterval(buscador); // Ya lo encendimos, apagamos el escáner
+            }
+        }, 250);
+
+        // Si después de 3 segundos no vio el botón de Admin, se apaga (es un usuario normal)
+        setTimeout(() => {
+            clearInterval(buscador);
+        }, 3000);
+    }
+  }
+
+  function renderizarGridUbicaciones(lista) {
+    var grid = document.getElementById("grid-ubicaciones");
+    grid.innerHTML = "";
+
+    if (!lista || lista.length === 0) {
+      grid.innerHTML =
+        '<div style="grid-column:1/-1; text-align:center; color:#888; padding:40px; background:#fff; border-radius:12px;">🏢 No hay ubicaciones creadas. Usa el botón naranja.</div>';
+      return;
+    }
+
+    for (var i = 0; i < lista.length; i++) {
+      var u = lista[i];
+      var card = document.createElement("div");
+      card.className = "card-ubicacion";
+
+    var headerHtml = `
+      <div class="card-header-ubic">
+        <h4 class="card-title">${u.nombre}</h4>
+        <div class="card-actions">
+           <button class="btn-icon-small" onclick="imprimirQR('${u.id}', '${u.nombre}')" title="Imprimir QR de la Caja">🖨️</button>
+           <button class="btn-icon-small" onclick="editarUbicacion('${u.id}', '${u.nombre}')" title="Editar Nombre">✏️</button>
+           <button class="btn-icon-small delete" onclick="eliminarUbicacion('${u.id}', ${u.items.length})" title="Eliminar Ubicación">🗑️</button>
+        </div>
+      </div>
+    `;
+
+      let badgesHtml = "";
+      if (u.totales) {
+        if (u.totales.L > 0)
+          badgesHtml += `<span class="ubic-badge" style="background:#e3f2fd; color:#007aff;">${u.totales.L.toFixed(2)} L</span>`;
+        if (u.totales.Kg > 0)
+          badgesHtml += `<span class="ubic-badge" style="background:#fdf4e3; color:#d97706;">${u.totales.Kg.toFixed(2)} Kg</span>`;
+        if (u.totales.Pza > 0)
+          badgesHtml += `<span class="ubic-badge" style="background:#f3e5f5; color:#9b59b6;">${Math.round(u.totales.Pza)} Pza</span>`;
+      }
+
+      var bodyHtml = `
+      <div class="card-body-ubic" onclick="verDetalleUbicacion('${u.id}')">
+         <div style="margin-bottom:12px; display:flex; gap:6px; flex-wrap:wrap;">${badgesHtml}</div>
+    `;
+
+      if (u.items && u.items.length > 0) {
+        bodyHtml += `<ul class="item-list">`;
+        for (var j = 0; j < Math.min(u.items.length, 3); j++) {
+          let it = u.items[j];
+          let volDisplay =
+            it.unidad === "Pza"
+              ? Math.round(it.volumen)
+              : it.volumen.toFixed(2);
+          bodyHtml += `<li><b>${it.producto}</b>: ${volDisplay} ${it.unidad}</li>`;
+        }
+        if (u.items.length > 3)
+          bodyHtml += `<li style="color:#007aff; font-size:0.8rem;">+ ${u.items.length - 3} productos más...</li>`;
+        bodyHtml += `</ul>`;
+      } else {
+        bodyHtml += `<div style="font-size:0.8rem; color:#999; font-style:italic; margin-top:5px;">(Vacío)</div>`;
+      }
+      bodyHtml += `</div>`;
+
+      card.innerHTML = headerHtml + bodyHtml;
+      grid.appendChild(card);
+    }
+  }
+
+  // --- ACCIONES UBICACIÓN ---
+  function guardarUbicacion() {
+    var nombre = document.getElementById("nuevaUbicNombre").value;
+    if (!nombre || nombre.trim() === "")
+      return Swal.fire("Atención", "Escribe un nombre", "warning");
+    if (typeof cerrarModalGenerico === "function")
+      cerrarModalGenerico("modalUbicacion");
+    Swal.fire({
+      title: "Creando...",
+      didOpen: function () {
+        Swal.showLoading();
+      },
+    });
+
+    google.script.run
+      .withSuccessHandler(function () {
+        document.getElementById("nuevaUbicNombre").value = "";
+        cargarDashboardUbicaciones();
+        Swal.fire("Éxito", "Ubicación creada", "success");
+      })
+      .registrarNuevaUbicacion(nombre);
+  }
+
+  function editarUbicacion(id, nombreActual) {
+    Swal.fire({
+      title: "Renombrar Ubicación",
+      input: "text",
+      inputValue: nombreActual,
+      showCancelButton: true,
+      confirmButtonText: "Guardar",
+      confirmButtonColor: "#007aff",
+    }).then((result) => {
+      if (result.isConfirmed && result.value) {
+        Swal.fire({
+          title: "Actualizando...",
+          didOpen: function () {
+            Swal.showLoading();
+          },
+        });
+        google.script.run
+          .withSuccessHandler(function () {
+            cargarDashboardUbicaciones();
+            Swal.fire("Listo", "Nombre actualizado", "success");
+          })
+          .actualizarNombreUbicacion(id, result.value);
+      }
+    });
+  }
+
+  function eliminarUbicacion(id, cantidadItems) {
+    if (cantidadItems > 0)
+      return Swal.fire(
+        "No se puede borrar",
+        "Esta ubicación tiene productos. Muévelos o sácalos primero.",
+        "error",
+      );
+
+    Swal.fire({
+      title: "¿Eliminar ubicación?",
+      text: "Esta acción no se puede deshacer.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d63031",
+      confirmButtonText: "Sí, eliminar",
+    }).then((result) => {
+      if (result.isConfirmed) {
+        Swal.fire({
+          title: "Borrando...",
+          didOpen: function () {
+            Swal.showLoading();
+          },
+        });
+        google.script.run
+          .withSuccessHandler(function () {
+            cargarDashboardUbicaciones();
+            Swal.fire("Eliminado", "La ubicación ha sido borrada.", "success");
+          })
+          .borrarUbicacion(id);
+      }
+    });
+  }
+
+  // --- DETALLE ---
+
+  let UBICACION_ACTUAL_ID = null;
+
+  // --- DETALLE CON CHECKBOXES ---
+  function verDetalleUbicacion(idUbic) {
+    var ubic = null;
+    for (var i = 0; i < CACHE_UBICACIONES.length; i++) {
+      if (String(CACHE_UBICACIONES[i].id) === String(idUbic)) {
+        ubic = CACHE_UBICACIONES[i];
+        break;
+      }
+    }
+    if (!ubic) return;
+
+    UBICACION_ACTUAL_ID = ubic.id; // Guardamos para el movimiento masivo
+    var tit = document.getElementById("tituloDetalle");
+    if (tit) tit.innerText = "📍 " + ubic.nombre;
+
+    var tbody = document.getElementById("tablaDetalleBody");
+    var chkAll = document.getElementById("chkAllUbic");
+    if (chkAll) chkAll.checked = false; // Resetear casilla maestra
+
+    if (tbody) {
+      tbody.innerHTML = "";
+      if (!ubic.items || ubic.items.length === 0) {
+        tbody.innerHTML =
+          '<tr><td colspan="6" style="text-align:center; padding:30px; color:#999;">Esta ubicación está vacía.</td></tr>';
+      } else {
+        const orden = { L: 1, Kg: 2, Pza: 3 };
+        ubic.items.sort((a, b) => {
+          let oA = orden[a.unidad] || 99;
+          let oB = orden[b.unidad] || 99;
+          if (oA !== oB) return oA - oB;
+          return a.producto.localeCompare(b.producto);
+        });
+
+        let unidadActual = "";
+
+        for (var k = 0; k < ubic.items.length; k++) {
+          var item = ubic.items[k];
+
+          if (item.unidad !== unidadActual) {
+            unidadActual = item.unidad;
+            let lbl = "📦 PIEZAS (INDIVISIBLES)";
+            let colorSep = "#f3e5f5";
+            let textCol = "#8e24aa";
+            let totalGrupo =
+              ubic.totales && ubic.totales.Pza
+                ? Math.round(ubic.totales.Pza) + " Pza"
+                : "0 Pza";
+
+            if (unidadActual === "L") {
+              lbl = "💧 VOLUMEN (LÍQUIDOS)";
+              colorSep = "#e3f2fd";
+              textCol = "#0277bd";
+              totalGrupo =
+                ubic.totales && ubic.totales.L
+                  ? ubic.totales.L.toFixed(2) + " L"
+                  : "0.00 L";
+            }
+            if (unidadActual === "Kg") {
+              lbl = "⚖️ MASA (SÓLIDOS)";
+              colorSep = "#fff8e1";
+              textCol = "#f57f17";
+              totalGrupo =
+                ubic.totales && ubic.totales.Kg
+                  ? ubic.totales.Kg.toFixed(2) + " Kg"
+                  : "0.00 Kg";
+            }
+
+            var trSep = document.createElement("tr");
+            trSep.innerHTML = `
+                 <td colspan="6" style="background:${colorSep}; padding:8px 12px; border-top: 2px solid ${textCol}30;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                       <span style="color:${textCol}; font-size:0.75rem; font-weight:800; letter-spacing:1px;">${lbl}</span>
+                       <span style="background: white; border: 1px solid ${textCol}40; color: ${textCol}; padding: 3px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 700; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">Total: ${totalGrupo}</span>
+                    </div>
+                 </td>
+               `;
+            tbody.appendChild(trSep);
+          }
+
+          var tr = document.createElement("tr");
+          tr.style.borderBottom = "1px solid #eee";
+          tr.style.background = "#fff";
+
+          var volUnit = item.volumen_nominal || 0;
+          let volDisplay =
+            item.unidad === "Pza"
+              ? Math.round(item.volumen)
+              : Number(item.volumen).toFixed(2);
+
+          // AGREGADA LA CASILLA (CHECKBOX) EN LA PRIMERA CELDA
+          var row =
+            '<td style="padding:12px; text-align:center;"><input type="checkbox" class="chk-ubic-item" data-idx="' +
+            k +
+            '" style="transform: scale(1.2); cursor:pointer;"></td>';
+          row +=
+            '<td style="padding:12px;"><b>' +
+            item.producto +
+            '</b><br><small style="color:#666;">' +
+            item.presentacion +
+            "</small></td>";
+          row +=
+            '<td style="padding:12px; color:#d63031; font-family:monospace; font-size:0.9rem;">' +
+            item.lote +
+            "</td>";
+          row +=
+            '<td style="padding:12px; font-size:0.9rem;">' +
+            (item.caducidad || "--") +
+            "</td>";
+          row +=
+            '<td style="padding:12px; text-align:right;"><b>' +
+            volDisplay +
+            " " +
+            item.unidad +
+            "</b></td>";
+          row += '<td style="padding:12px; text-align:center;">';
+          row += `<div style="display:flex; gap:5px; justify-content:center;">`;
+          row += `<button class="btn-action btn-move" title="Transferir" onclick="abrirTransferencia('${item.raw_producto_id}', '${item.producto}', '${item.lote}', ${item.volumen}, '${ubic.id}', '${item.raw_presentacion_id}', ${volUnit}, '${item.unidad}')">🔄</button>`;
+          row += `<button class="btn-action btn-transf" title="Transformar" onclick="abrirTransformacion('${item.raw_producto_id}', '${item.producto}', '${item.lote}', ${item.volumen}, '${ubic.id}', '${item.raw_presentacion_id}', ${volUnit}, '${item.unidad}')">🛠️</button>`;
+          row += `</div></td>`;
+
+          tr.innerHTML = row;
+          tbody.appendChild(tr);
+        }
+      }
+    }
+    if (typeof abrirModalGenerico === "function")
+      abrirModalGenerico("modalDetalleUbicacion");
+  }
+
+  // --- LÓGICA DE COLAPSO (ACORDEÓN) PARA UBICACIONES ---
+  window.toggleGrupoUbicacion = function (groupId, headerRow) {
+    // Busca todas las filas que pertenezcan al grupo clíqueado (ej. grupo-ubic-L)
+    var rows = document.querySelectorAll("." + groupId);
+    var chevron = headerRow.querySelector(".ubic-chevron");
+
+    // Verificamos si actualmente están ocultas
+    var isHidden = rows.length > 0 && rows[0].style.display === "none";
+
+    // Mostramos u ocultamos
+    rows.forEach(function (r) {
+      r.style.display = isHidden ? "table-row" : "none";
+    });
+
+    // Cambiamos el ícono de flecha (▶ o ▼)
+    if (chevron) {
+      chevron.innerText = isHidden ? "▼" : "▶";
+    }
+  };
+
+  // --- TRANSFERENCIA ---
+ function abrirTransferencia(
+  pId,
+  pNom,
+  lote,
+  stock,
+  uId,
+  presId,
+  volUnit,
+  unidadOrigen,
+) {
+  // 1. Rescatamos la unidad (Si por alguna razón no llega, ponemos 'L' por defecto)
+  let unidad = unidadOrigen || "L";
+
+  // Guardamos los datos necesarios para la transferencia en la memoria temporal
+  volUnit = Number(volUnit);
+  TEMP_ACCION = {
+    prodId: pId,
+    prodNom: pNom,
+    lote: lote,
+    stock: stock,
+    ubicId: uId,
+    presId: presId,
+    volUnit: volUnit,
+    unidad: unidad,
+  };
+
+  document.getElementById("txtProductoTransf").innerText = pNom;
+  document.getElementById("txtLoteTransf").innerText = "Lote: " + lote;
+  document.getElementById("cantTransferir").value = "";
+
+  // 2. Reseteamos visuales usando la UNIDAD DINÁMICA correcta
+  document.getElementById("lblRestante").innerText = stock + " " + unidad;
+  document.getElementById("lblEquivalencia").innerText = "0 " + unidad;
+
+  // Cálculo del máximo de piezas movibles
+  var maxPzas = volUnit > 0 ? Math.floor(stock / volUnit) : 0;
+  var label = document.querySelector("#modalTransferencia label");
+  var btnMax = document.getElementById("btnMaxTransf");
+
+  if (!btnMax && label) {
+    label.insertAdjacentHTML(
+      "beforeend",
+      ` <span id="btnMaxTransf" style="color:#007aff; cursor:pointer; font-weight:bold; font-size:0.9rem; margin-left:10px;"></span>`,
+    );
+    btnMax = document.getElementById("btnMaxTransf");
+  }
+
+  if (btnMax) {
+    btnMax.innerText = "(Máx: " + maxPzas + " pzas)";
+    btnMax.onclick = function () {
+      document.getElementById("cantTransferir").value = maxPzas;
+      if (typeof calcularSimulacionTransferencia === "function")
+        calcularSimulacionTransferencia();
+    };
+  }
+
+  // Llenar destinos (todas las cajas menos la actual)
+  var selDest = document.getElementById("selDestinoTransf");
+  
+  if (selDest) {
+    // Función interna para renderizar las opciones dentro de tu select
+    function renderizarOpcionesDestino(listaUbicaciones) {
+      selDest.innerHTML = '<option value="">Selecciona destino...</option>';
+      if (listaUbicaciones && listaUbicaciones.length > 0) {
+        listaUbicaciones.forEach((u) => {
+          if (String(u.id) !== String(uId)) {
+            var opt = document.createElement("option");
+            opt.value = u.id;
+            opt.text = u.nombre;
+            selDest.appendChild(opt);
+          }
+        });
+      }
+    }
+
+    // BI-INTERFAZ: Si ya hay ubicaciones cargadas en memoria, las pinta directo
+    if (window.CACHE_UBICACIONES && window.CACHE_UBICACIONES.length > 0) {
+      renderizarOpcionesDestino(window.CACHE_UBICACIONES);
+    } else {
+      // Si está vacío (vienes de Productos), le pide la lista en vivo a Apps Script
+      selDest.innerHTML = '<option value="">Cargando destinos... ⏳</option>';
+      
+      google.script.run
+        .withSuccessHandler(function(data) {
+          // Normalizamos la respuesta por si viene encapsulada o en array directo
+          let lista = (data && data.ubicaciones) ? data.ubicaciones : (Array.isArray(data) ? data : []);
+          renderizarOpcionesDestino(lista);
+        })
+        .withFailureHandler(function(err) {
+          selDest.innerHTML = '<option value="">Error al cargar destinos</option>';
+          console.error("Fallo al traer ubicaciones desde Productos:", err);
+        })
+        .obtenerDatosUbicaciones(); // Llama a la función del servidor que lee tu hoja UBICACIONES
+    }
+  }
+
+  abrirModalGenerico("modalTransferencia");
+}
+
+  function calcularSimulacionTransferencia() {
+    if (!TEMP_ACCION) return;
+    var pzas = parseFloat(document.getElementById("cantTransferir").value) || 0;
+
+    var cantReal = pzas * TEMP_ACCION.volUnit;
+
+    // 3. Imprimimos el resultado usando la unidad guardada en TEMP_ACCION
+    document.getElementById("lblEquivalencia").innerText =
+      cantReal.toFixed(2) + " " + TEMP_ACCION.unidad;
+
+    var resto = TEMP_ACCION.stock - cantReal;
+    var elRest = document.getElementById("lblRestante");
+
+    if (elRest) {
+      elRest.innerText = resto.toFixed(2) + " " + TEMP_ACCION.unidad;
+      // Validación visual: Rojo si te pasas
+      if (resto < -0.001) {
+        elRest.style.color = "#d63031";
+        elRest.innerText += " (Insuficiente)";
+      } else {
+        elRest.style.color = "#27ae60";
+      }
+    }
+  }
+
+  function confirmarTransferencia() {
+    if (!TEMP_ACCION) return;
+    var pzas = parseFloat(document.getElementById("cantTransferir").value);
+    var dest = document.getElementById("selDestinoTransf").value;
+
+    if (!pzas || pzas <= 0)
+      return Swal.fire("Error", "Cantidad incorrecta", "error");
+    if (!dest) return Swal.fire("Error", "Elige destino", "error");
+
+    var lts = pzas * TEMP_ACCION.volUnit;
+    if (lts > TEMP_ACCION.stock + 0.001)
+      return Swal.fire(
+        "Stock Insuficiente",
+        "Solo tienes " + TEMP_ACCION.stock + " disponibles.",
+        "error",
+      );
+
+    cerrarModalGenerico("modalTransferencia");
+    Swal.fire({
+      title: "Moviendo...",
+      didOpen: function () {
+        Swal.showLoading();
+      },
+    });
+
+    google.script.run
+      .withSuccessHandler(function () {
+        cargarDashboardUbicaciones();
+        cerrarModalGenerico("modalDetalleUbicacion");
+        Swal.fire("Listo", "Transferencia exitosa", "success");
+        logActividad(
+          "TRANSFERENCIA",
+          `Movió ${lts.toFixed(2)}L de ${TEMP_ACCION.prodNom} al destino: ${dest}`,
+        );
+      })
+      .withFailureHandler(function (e) {
+        Swal.fire("Error", e.message, "error");
+      })
+      .transferirProducto(
+        TEMP_ACCION.ubicId,
+        dest,
+        TEMP_ACCION.prodId,
+        TEMP_ACCION.presId,
+        TEMP_ACCION.lote,
+        lts,
+      );
+  }
+
+  // --- TRANSFORMACIÓN ---
+  function abrirTransformacion(
+    pId,
+    pNom,
+    lote,
+    stock,
+    uId,
+    presId,
+    volUnit,
+    unidadOrigen,
+  ) {
+    if (unidadOrigen === "Pza") {
+      return Swal.fire(
+        "Acción no permitida",
+        "Los productos por Pieza son indivisibles. Utiliza la opción de 'Transferir'.",
+        "warning",
+      );
+    }
+
+    volUnit = Number(volUnit);
+    TEMP_ACCION = {
+      prodId: pId,
+      prodNom: pNom,
+      lote: lote,
+      stock: stock,
+      ubicId: uId,
+      presId: presId,
+      volUnit: volUnit,
+      unidad: unidadOrigen,
+    };
+
+    document.getElementById("lblTransfOrigen").innerText = pNom;
+    document.getElementById("lblTransfLote").innerText = lote;
+    document.getElementById("cantTransfPiezas").value = "";
+    document.getElementById("lblTransfLitros").innerText = `0 ${unidadOrigen}`;
+
+    // Limpiar Buscador
+    document.getElementById("transf_producto_search").value = "";
+    document.getElementById("selTransfNuevoProd").value = "";
+
+    // Filtrar Datalist de Productos (Misma unidad)
+    let dlProd = document.getElementById("lista-transf-productos");
+    if (dlProd && window.CACHE_CATALOGOS) {
+      dlProd.innerHTML = "";
+      window.CACHE_CATALOGOS.productos.forEach((p) => {
+        let uLow = (p.unidad || "L").toLowerCase();
+        let pUni = uLow.includes("kg") || uLow.includes("kilo") ? "Kg" : "L"; // Pzas ya están bloqueadas
+        if (pUni === unidadOrigen) {
+          let opt = document.createElement("option");
+          opt.value = p.nombre;
+          dlProd.appendChild(opt);
+        }
+      });
+    }
+
+    // Filtrar Select de Presentaciones (Riguroso)
+    let selPres = document.getElementById("selTransfNuevaPres");
+    if (selPres && window.CACHE_CATALOGOS) {
+      selPres.innerHTML = '<option value="">Selecciona...</option>';
+      window.CACHE_CATALOGOS.presentaciones.forEach((p) => {
+        let n = p.nombre.toLowerCase();
+        let pUni = "";
+        if (n.includes("kg") || n.includes("gramo")) pUni = "Kg";
+        else if (
+          n.includes(" pza") ||
+          n.includes("unid") ||
+          n.includes("pieza")
+        )
+          pUni = "Pza";
+        else if (n.includes(" l") || n.includes("ml") || n.includes("litro"))
+          pUni = "L";
+
+        if (pUni === unidadOrigen) {
+          let opt = document.createElement("option");
+          opt.value = p.id;
+          opt.text = p.nombre;
+          opt.setAttribute("data-volumen", p.volumen || 0);
+          selPres.appendChild(opt);
+        }
+      });
+    }
+
+    var maxPzas = volUnit > 0 ? Math.floor(stock / volUnit) : 0;
+    var btnMax2 = document.getElementById("btnMaxTransf2");
+    if (!btnMax2) {
+      var label = document.querySelector("#modalTransformacion label");
+      if (label)
+        label.insertAdjacentHTML(
+          "beforeend",
+          ` <span id="btnMaxTransf2" style="color:#9b59b6; cursor:pointer; font-weight:bold; font-size:0.9rem; margin-left:10px;"></span>`,
+        );
+      btnMax2 = document.getElementById("btnMaxTransf2");
+    }
+    if (btnMax2) {
+      btnMax2.innerText = "(Máx: " + maxPzas + ")";
+      btnMax2.onclick = function () {
+        if (volUnit <= 0) return;
+        document.getElementById("cantTransfPiezas").value = maxPzas;
+        calcTransf();
+      };
+    }
+    abrirModalGenerico("modalTransformacion");
+  }
+
+  // 1. EL BUSCADOR AHORA ES SILENCIOSO (Solo busca, no lanza alertas)
+  // --- 1. SELECCIÓN DE PRODUCTO (Sincroniza Filtro de Presentaciones) ---
+  function seleccionarProductoTransf() {
+    let searchVal = document
+      .getElementById("transf_producto_search")
+      .value.trim();
+    let hiddenId = document.getElementById("selTransfNuevoProd");
+    if (searchVal === "") {
+      hiddenId.value = "";
+      return;
+    }
+
+    let prod = window.CACHE_CATALOGOS.productos.find(
+      (p) => p.nombre.toUpperCase() === searchVal.toUpperCase(),
+    );
+
+    if (prod) {
+      hiddenId.value = prod.id;
+      // ¡IMPORTANTE! Al encontrar el producto, validamos su unidad contra el origen
+      let uLow = (prod.unidad || "L").toLowerCase();
+      let pUni = uLow.includes("kg")
+        ? "Kg"
+        : uLow.includes("pza") || uLow.includes("unid")
+          ? "Pza"
+          : "L";
+
+      if (pUni !== TEMP_ACCION.unidad) {
+        Swal.fire(
+          "Unidad Incompatible",
+          `El producto "${prod.nombre}" es de tipo ${pUni}, pero el origen es ${TEMP_ACCION.unidad}.`,
+          "error",
+        );
+        document.getElementById("transf_producto_search").value = "";
+        hiddenId.value = "";
+        return;
+      }
+      // Refrescamos el cálculo de piezas estimadas
+      calcTransf();
+    } else {
+      // Lógica de creación de Sub-Producto (Padre/Hijo)
+      hiddenId.value = "";
+      let nombrePadre = TEMP_ACCION.prodNom;
+      let match = nombrePadre.match(/(.*)\(([^)]+)\)$/);
+      if (match) nombrePadre = match[2].trim();
+
+      let nuevoNombreAlias = `${searchVal.toUpperCase()} (${nombrePadre})`;
+
+      Swal.fire({
+        title: "Producto No Registrado",
+        text: `¿Deseas registrar "${nuevoNombreAlias}" como un sub-producto de ${nombrePadre}?`,
+        icon: "question",
+        showCancelButton: true,
+        confirmButtonColor: "#9b59b6",
+        confirmButtonText: "Sí, registrar",
+      }).then((res) => {
+        if (res.isConfirmed) {
+          document.getElementById("nuevoNombre").value = nuevoNombreAlias;
+          let uSelect = document.getElementById("nuevaUnidad");
+          if (uSelect) {
+            // FIX: Asegurar que si la unidad es Pza, seleccione 'Unid' en el selector
+            uSelect.value =
+              TEMP_ACCION.unidad === "Kg"
+                ? "Kg"
+                : TEMP_ACCION.unidad === "Pza"
+                  ? "Unid"
+                  : "L";
+            uSelect.disabled = true;
+          }
+
+          // FIX: Forzamos visualmente que el modalProducto se ponga hasta el frente
+          document.getElementById("modalProducto").style.zIndex = "3050";
+          abrirModalGenerico("modalProducto");
+        } else {
+          document.getElementById("transf_producto_search").value = "";
+        }
+      });
+    }
+  }
+
+  function calcTransf() {
+    if (!TEMP_ACCION) return;
+
+    var inputPzas = document.getElementById("cantTransfPiezas");
+    var pzas = Math.floor(parseFloat(inputPzas.value)) || 0;
+    if (pzas < 0) pzas = 0;
+
+    var cantReal = pzas * TEMP_ACCION.volUnit;
+
+    var elLit = document.getElementById("lblTransfLitros");
+    if (elLit) {
+      elLit.innerText = cantReal.toFixed(2) + " " + TEMP_ACCION.unidad;
+      elLit.style.color =
+        cantReal > TEMP_ACCION.stock + 0.001 ? "red" : "#9b59b6";
+    }
+
+    var selD = document.getElementById("selTransfNuevaPres");
+    var volD = 0;
+    if (selD && selD.selectedIndex >= 0)
+      volD =
+        parseFloat(
+          selD.options[selD.selectedIndex].getAttribute("data-volumen"),
+        ) || 0;
+
+    var res = 0;
+    if (volD > 0) res = Math.floor(cantReal / volD);
+
+    var elRes = document.getElementById("lblTransfResultado");
+    if (elRes) {
+      elRes.innerText = res + " Piezas";
+    }
+  }
+
+  // 2. EL BOTÓN "TRANSFORMAR" AHORA ES INTELIGENTE (Controla todo el flujo)
+  function confirmarTransformacion() {
+    var pzas = parseFloat(document.getElementById("cantTransfPiezas").value);
+    var searchVal = document
+      .getElementById("transf_producto_search")
+      .value.trim();
+    var nProd = document.getElementById("selTransfNuevoProd").value;
+    var nPres = document.getElementById("selTransfNuevaPres").value;
+    var nLote = document.getElementById("inputTransfNuevoLote").value;
+
+    if (!pzas || pzas <= 0)
+      return Swal.fire("Error", "Cantidad incorrecta", "error");
+    if (!searchVal)
+      return Swal.fire(
+        "Error",
+        "Escribe el nombre del producto destino",
+        "error",
+      );
+    if (!nPres)
+      return Swal.fire("Error", "Selecciona la nueva presentación", "error");
+
+    // A. VERIFICAMOS EN TIEMPO REAL SI EL PRODUCTO EXISTE
+    let prod = window.CACHE_CATALOGOS.productos.find(
+      (p) => p.nombre.toUpperCase() === searchVal.toUpperCase(),
+    );
+
+    if (prod) {
+      // B. SI EXISTE: Aseguramos su ID interno y validamos unidades
+      nProd = prod.id;
+      let uLow = (prod.unidad || "L").toLowerCase();
+      let pUni = uLow.includes("kg")
+        ? "Kg"
+        : uLow.includes("pza") || uLow.includes("unid")
+          ? "Pza"
+          : "L";
+
+      if (pUni !== TEMP_ACCION.unidad) {
+        return Swal.fire(
+          "Incompatibilidad",
+          `El producto es ${pUni} pero estás transformando ${TEMP_ACCION.unidad}.`,
+          "error",
+        );
+      }
+    } else {
+      // C. SI NO EXISTE: Detenemos el guardado y ofrecemos crearlo aquí mismo
+      let nombrePadre = TEMP_ACCION.prodNom;
+      let match = nombrePadre.match(/(.*)\(([^)]+)\)$/);
+      if (match) nombrePadre = match[2].trim();
+
+      let nuevoNombreAlias = `${searchVal.toUpperCase()} (${nombrePadre})`;
+
+      return Swal.fire({
+        title: "Producto No Registrado",
+        text: `¿Deseas registrar "${searchVal.toUpperCase()}" como un sub-producto de ${nombrePadre}?`,
+        icon: "question",
+        showCancelButton: true,
+        confirmButtonColor: "#9b59b6",
+        confirmButtonText: "Sí, registrar",
+      }).then((res) => {
+        if (res.isConfirmed) {
+          document.getElementById("nuevoNombre").value = nuevoNombreAlias;
+          let uSelect = document.getElementById("nuevaUnidad");
+          if (uSelect) {
+            uSelect.value = TEMP_ACCION.unidad === "Kg" ? "Kg" : "L";
+            uSelect.disabled = true;
+          }
+          abrirModalGenerico("modalProducto");
+        }
+      });
+    }
+
+    // D. SI TODO ESTÁ EN ORDEN, HACEMOS LA MATEMÁTICA Y GUARDAMOS
+    var lts = pzas * TEMP_ACCION.volUnit;
+    if (lts > TEMP_ACCION.stock + 0.001)
+      return Swal.fire("Error", "Stock insuficiente", "error");
+
+    var datos = {
+      origenId: TEMP_ACCION.ubicId,
+      productoIdOrigen: TEMP_ACCION.prodId,
+      loteOrigen: TEMP_ACCION.lote,
+      cantidadLitros: lts,
+      nuevoProductoId: nProd,
+      nuevaPresentacionId: nPres,
+      nuevoLote: nLote,
+    };
+
+    if (typeof cerrarModalGenerico === "function")
+      cerrarModalGenerico("modalTransformacion");
+    Swal.fire({
+      title: "Procesando...",
+      didOpen: function () {
+        Swal.showLoading();
+      },
+    });
+
+    google.script.run
+      .withSuccessHandler(function () {
+        cargarDashboardUbicaciones();
+        if (typeof cerrarModalGenerico === "function")
+          cerrarModalGenerico("modalDetalleUbicacion");
+        Swal.fire("Listo", "Transformación exitosa", "success");
+        // --- NUEVA LÍNEA: Refrescar también la tabla de Productos ---
+        if (typeof cargarDashboardProductos === "function")
+          cargarDashboardProductos();
+
+        if (typeof cerrarModalGenerico === "function")
+          cerrarModalGenerico("modalDetalleUbicacion");
+        Swal.fire("Listo", "Transformación exitosa", "success");
+      })
+      .withFailureHandler(function (e) {
+        Swal.fire("Error", e.message, "error");
+      })
+      .realizarTransformacion(datos);
+  }
+
+  // --- LÓGICA DE TRANSFERENCIA MASIVA ---
+
+  function toggleAllUbicItems(source) {
+    const checkboxes = document.querySelectorAll(".chk-ubic-item");
+    checkboxes.forEach((chk) => (chk.checked = source.checked));
+  }
+
+  let ITEMS_MASIVOS = [];
+
+  function prepararTransferenciaMasiva() {
+    const checkboxes = document.querySelectorAll(".chk-ubic-item:checked");
+    if (checkboxes.length === 0) {
+      return Swal.fire(
+        "Atención",
+        "Selecciona al menos un lote marcando la casilla del lado izquierdo.",
+        "warning",
+      );
+    }
+
+    // Buscamos la ubicación completa actual en el cache
+    let ubicInfo = CACHE_UBICACIONES.find(
+      (u) => String(u.id) === String(UBICACION_ACTUAL_ID),
+    );
+    if (!ubicInfo) return;
+
+    ITEMS_MASIVOS = [];
+    checkboxes.forEach((chk) => {
+      let idx = parseInt(chk.getAttribute("data-idx"));
+      let item = ubicInfo.items[idx];
+      ITEMS_MASIVOS.push({
+        productoId: item.raw_producto_id,
+        presentacionId: item.raw_presentacion_id,
+        lote: item.lote,
+        volumen: item.volumen,
+      });
+    });
+
+    document.getElementById("lblCantMasivaTransf").innerText =
+      ITEMS_MASIVOS.length;
+
+    // Llenar el select de destinos excluyendo el estante actual
+    var selDest = document.getElementById("selDestinoMasivo");
+    if (selDest && window.CACHE_UBICACIONES) {
+      selDest.innerHTML = '<option value="">Selecciona destino...</option>';
+      window.CACHE_UBICACIONES.forEach((u) => {
+        if (String(u.id) !== String(UBICACION_ACTUAL_ID)) {
+          var opt = document.createElement("option");
+          opt.value = u.id;
+          opt.text = u.nombre;
+          selDest.appendChild(opt);
+        }
+      });
+    }
+
+    abrirModalGenerico("modalTransferenciaMasiva");
+  }
+
+  function confirmarTransferenciaMasiva() {
+    var dest = document.getElementById("selDestinoMasivo").value;
+    if (!dest)
+      return Swal.fire(
+        "Atención",
+        "Por favor selecciona el estante de destino.",
+        "warning",
+      );
+
+    cerrarModalGenerico("modalTransferenciaMasiva");
+
+    Swal.fire({
+      title: "Moviendo " + ITEMS_MASIVOS.length + " lotes...",
+      allowOutsideClick: false,
+      didOpen: function () {
+        Swal.showLoading();
+      },
+    });
+
+    google.script.run
+      .withSuccessHandler(function (res) {
+        if (res.success) {
+          cargarDashboardUbicaciones();
+          cerrarModalGenerico("modalDetalleUbicacion");
+          Swal.fire(
+            "¡Listo!",
+            "Movimiento masivo completado con éxito.",
+            "success",
+          );
+        } else {
+          Swal.fire("Error", res.error, "error");
+        }
+      })
+      .withFailureHandler(function (e) {
+        Swal.fire("Error", e.message, "error");
+      })
+      .transferirMasivo(UBICACION_ACTUAL_ID, dest, ITEMS_MASIVOS);
+  }
+
+  // ==========================================
+  // MÓDULO DE REORGANIZACIÓN INTELIGENTE
+  // ==========================================
+  let PROPUESTA_REORG = []; // Aquí guardaremos el plan maestro
+
+  window.abrirAsistenteOrganizacion = function () {
+    abrirModalGenerico("modalOrganizacion");
+    document.getElementById("btn-aplicar-reorg").style.display = "none";
+    document.getElementById("cuerpo-propuesta").innerHTML = `
+        <div style="text-align: center; padding: 40px; color: #64748b;">
+            <div class="modern-spinner"></div>
+            <p style="margin-top: 15px;">Analizando inventario y calculando capacidades de cajas...</p>
+        </div>`;
+
+    // Damos un pequeño respiro a la UI antes de ejecutar el cálculo pesado
+    setTimeout(calcularPropuesta, 500);
+  };
+
+  function calcularPropuesta() {
+    if (!CACHE_UBICACIONES || CACHE_UBICACIONES.length === 0) return;
+
+    let itemsVigentesCaja = [];
+    let itemsCaducadosCaja = [];
+    let itemsVigentesSueltos = [];
+    let itemsCaducadosSueltos = [];
+
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+
+    // 1. Extraer todo el inventario y calcular volúmenes exactos
+    CACHE_UBICACIONES.forEach((ubic) => {
+      if (ubic.items) {
+        ubic.items.forEach((item) => {
+          let pres = (item.presentacion || "").toLowerCase();
+          let pzasFisicas = 0;
+          let vNom = parseFloat(item.volumen_nominal);
+
+          // Si la BD no tiene el volumen, intentamos extraerlo del texto (ej. "0.250 L")
+          if (isNaN(vNom) || vNom <= 0) {
+            let match = pres.match(/[\d\.]+/);
+            if (match) {
+              vNom = parseFloat(match[0]);
+              if (pres.includes("ml") || pres.includes("gr")) vNom /= 1000;
+            }
+          }
+          if (!vNom || vNom <= 0) vNom = 1;
+
+          // Calcular piezas físicas reales
+          if (item.unidad === "Pza") {
+            pzasFisicas = Math.round(item.volumen);
+          } else {
+            pzasFisicas = Math.floor(item.volumen / vNom);
+          }
+
+          if (pzasFisicas > 0) {
+            let estaCaducado = false;
+            if (
+              item.caducidad &&
+              item.caducidad !== "---" &&
+              item.caducidad !== "SIN-FECHA"
+            ) {
+              let partes = item.caducidad.split("/");
+              if (partes.length === 3) {
+                let fCad = new Date(partes[2], partes[1] - 1, partes[0]);
+                if (fCad < hoy) estaCaducado = true;
+              }
+            }
+
+            // --- NUEVA REGLA: DETECTAR PIEZAS Y EVITAR QUE ENTREN A CAJAS ---
+            let esPza =
+              item.unidad === "Pza" ||
+              pres.includes("unid") ||
+              pres.includes("pza") ||
+              pres.includes("pieza");
+
+            let esParaCaja = false;
+            let pts = 0;
+
+            // Solo aplica para cajas si NO es una pieza abstracta y cumple el volumen exacto
+            if (!esPza) {
+              if (Math.abs(vNom - 1.0) < 0.01) {
+                esParaCaja = true;
+                pts = 5;
+              } else if (Math.abs(vNom - 0.25) < 0.01) {
+                esParaCaja = true;
+                pts = 1;
+              }
+            }
+
+            let obj = {
+              prodId: item.raw_producto_id,
+              esPiezaAbstracta: esPza, // Guardamos este dato para la interfaz
+              producto: item.producto,
+              presId: item.raw_presentacion_id,
+              presentacion: item.presentacion,
+              pzas: pzasFisicas,
+              vNom: vNom,
+              puntosPorPza: pts,
+              ubicaciones: [ubic.nombre || ubic.id],
+            };
+
+            // Distribuir en las 4 categorías
+            if (esParaCaja) {
+              if (estaCaducado) itemsCaducadosCaja.push(obj);
+              else itemsVigentesCaja.push(obj);
+            } else {
+              if (estaCaducado) itemsCaducadosSueltos.push(obj);
+              else itemsVigentesSueltos.push(obj);
+            }
+          }
+        });
+      }
+    });
+
+    // 2. Agrupar y aplicar LA NUEVA REGLA DE PRIORIDAD (1L Primero)
+    function agrupar(lista) {
+      let mapa = {};
+      lista.forEach((i) => {
+        let key = i.prodId + "|" + i.presId;
+        if (!mapa[key]) {
+          mapa[key] = { ...i, ubicaciones: new Set(i.ubicaciones) };
+        } else {
+          mapa[key].pzas += i.pzas;
+          i.ubicaciones.forEach((u) => mapa[key].ubicaciones.add(u));
+        }
+      });
+
+      return Object.values(mapa)
+        .map((x) => ({ ...x, ubicaciones: Array.from(x.ubicaciones) }))
+        .sort((a, b) => {
+          // MAGIA AQUÍ: Ordenamos primero por el tamaño del envase (Los de 5 pts van antes que los de 1 pt)
+          if (b.puntosPorPza !== a.puntosPorPza) {
+            return b.puntosPorPza - a.puntosPorPza;
+          }
+          // Si son del mismo tamaño, los ordenamos alfabéticamente para que queden bonitos
+          return a.producto.localeCompare(b.producto);
+        });
+    }
+
+    let agVigentesCaja = agrupar(itemsVigentesCaja);
+    let agCaducadosCaja = agrupar(itemsCaducadosCaja);
+    let agVigentesSueltos = agrupar(itemsVigentesSueltos);
+    let agCaducadosSueltos = agrupar(itemsCaducadosSueltos);
+
+    // 3. Algoritmo de Empaquetado
+    function empaquetar(lista, prefijo) {
+      let cajas = [];
+      let cajaActual = {
+        id: `${prefijo} 1`,
+        puntosUsados: 0,
+        volumenTotalLts: 0,
+        contenido: [],
+      };
+      let contadorCajas = 1;
+
+      lista.forEach((item) => {
+        let pzasRestantes = item.pzas;
+
+        while (pzasRestantes > 0) {
+          let espacioDisponiblePts = 60 - cajaActual.puntosUsados;
+          let pzasQueCaben = Math.floor(
+            espacioDisponiblePts / item.puntosPorPza,
+          );
+
+          if (pzasQueCaben === 0) {
+            cajas.push(cajaActual);
+            contadorCajas++;
+            cajaActual = {
+              id: `${prefijo} ${contadorCajas}`,
+              puntosUsados: 0,
+              volumenTotalLts: 0,
+              contenido: [],
+            };
+            continue;
+          }
+
+          let pzasAMeter = Math.min(pzasRestantes, pzasQueCaben);
+          let ltsAMeter = pzasAMeter * item.vNom;
+
+          cajaActual.contenido.push({
+            producto: item.producto,
+            presentacion: item.presentacion,
+            pzas: pzasAMeter,
+            litrosItem: ltsAMeter,
+            origen: item.ubicaciones.join(", "),
+          });
+
+          cajaActual.puntosUsados += pzasAMeter * item.puntosPorPza;
+          cajaActual.volumenTotalLts += ltsAMeter;
+          pzasRestantes -= pzasAMeter;
+        }
+      });
+
+      if (cajaActual.contenido.length > 0) cajas.push(cajaActual);
+      return cajas;
+    }
+
+    PROPUESTA_REORG = {
+      vigentes: empaquetar(agVigentesCaja, "CAJA VIGENTES"),
+      caducados: empaquetar(agCaducadosCaja, "CAJA CADUCADOS"),
+      sueltosVigentes: agVigentesSueltos,
+      sueltosCaducados: agCaducadosSueltos,
+    };
+    dibujarPropuestaUI(PROPUESTA_REORG);
+  }
+
+  function dibujarPropuestaUI(plan) {
+    let html = `<div style="margin-bottom: 20px; font-size: 0.95rem; color: #475569; background:#f1f5f9; padding:15px; border-radius:8px; border:1px solid #cbd5e1;">
+        ℹ️ <b>Regla de Agrupación Prioritaria:</b> El sistema empaca primero todas las botellas de <b>1 L</b> formando cajas completas. Si la última caja queda a medias, se rellena el espacio restante con frascos de <b>0.25 L</b>.<br>
+        <span style="font-size:0.8rem; color:#64748b; margin-top:5px; display:inline-block;">(Nota Matemática: 60 piezas de 0.25L equivalen a 15 Litros físicos. Por eso, cajas con frascos pequeños sumarán más de 12L totales aunque estén físicamente llenas al 100%).</span>
+    </div>`;
+
+    function dibujarCajas(titulo, cajas, colorTema, bgTema) {
+      if (cajas.length === 0) return "";
+      let secHtml = `<h4 style="color: ${colorTema}; border-bottom: 2px solid ${colorTema}; padding-bottom: 8px; margin-top: 20px; font-size: 1.1rem;">${titulo}</h4>`;
+
+      // Ajustamos el minmax para que las cajas no se hagan tan delgaditas
+      secHtml += `<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 20px; margin-top: 15px;">`;
+
+      cajas.forEach((c) => {
+        let porcentajeLleno = Math.round((c.puntosUsados / 60) * 100);
+
+        secHtml += `
+            <div style="background: white; border: 1px solid #cbd5e1; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.04);">
+                <div style="background: ${bgTema}; padding: 12px 15px; font-weight: bold; color: ${colorTema}; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #cbd5e1;">
+                    <span style="font-size: 1.05rem;">📦 ${c.id}</span>
+                    <div style="text-align: right; display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 1.1rem; color: #1e293b; background: white; padding: 2px 8px; border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">${c.volumenTotalLts.toFixed(2)} L</span>
+                        <span style="font-size: 0.8rem; background: rgba(255,255,255,0.7); padding: 4px 8px; border-radius: 10px; border: 1px solid ${colorTema}40;">${porcentajeLleno}%</span>
+                    </div>
+                </div>
+                <div style="padding: 15px;">
+                    <ul style="margin: 0; padding-left: 0; font-size: 0.9rem; color: #334155; display: flex; flex-direction: column; gap: 12px;">`;
+
+        c.contenido.forEach((item) => {
+          // ESTRUCTURA BLINDADA: Usamos Flex-direction: column para que el GPS quede estrictamente abajo
+          secHtml += `<li style="list-style: none; border-bottom: 1px dashed #e2e8f0; padding-bottom: 12px; display: flex; flex-direction: column; gap: 6px;">
+                                <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;">
+                                    <div style="line-height: 1.4;">
+                                        <b>${item.pzas} pzas</b> de ${item.producto} <span style="color:#64748b; font-size:0.8rem; white-space:nowrap;">(${item.presentacion})</span>
+                                    </div>
+                                    ${item.esPiezaAbstracta ? "" : `<div style="color:#007aff; font-weight:bold; white-space: nowrap; flex-shrink: 0; background: #eff6ff; padding: 2px 8px; border-radius: 6px; font-size: 0.9rem;">= ${item.litrosItem.toFixed(2)} L</div>`}
+                                </div>
+                                <div style="font-size: 0.8rem; color: #d97706; background:#fffbeb; padding: 4px 10px; border-radius: 6px; align-self: flex-start; border: 1px solid #fde68a; line-height: 1.3;">
+                                    📍 Traer de: <b>${item.origen}</b>
+                                </div>
+                            </li>`;
+        });
+
+        secHtml += `</ul></div></div>`;
+      });
+      secHtml += `</div>`;
+      return secHtml;
+    }
+
+    function dibujarSueltos(titulo, sueltos, colorTema) {
+      if (sueltos.length === 0) return "";
+      let secHtml = `<h4 style="color: ${colorTema}; border-bottom: 2px solid ${colorTema}; padding-bottom: 8px; margin-top: 30px; font-size: 1.1rem;">${titulo}</h4>`;
+      secHtml += `<div style="background: white; border: 1px solid #cbd5e1; border-radius: 12px; padding: 15px; margin-top: 15px;">
+                        <ul style="margin: 0; padding-left: 0; font-size: 0.85rem; color: #334155; display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 15px;">`;
+
+      sueltos.forEach((item) => {
+        let ltsTotales = item.pzas * item.vNom;
+        secHtml += `<li style="background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; list-style: none; display: flex; flex-direction: column; justify-content: space-between; gap: 10px;">
+                            <div style="line-height: 1.4; font-size: 0.95rem;">
+                                <span style="font-size:1.2rem; margin-right:5px;">🛢️</span> <b>${item.pzas} pzas</b> de ${item.producto} <span style="color:#64748b; font-size:0.85rem;">(${item.presentacion})</span>
+                            </div>
+                            <div style="border-top: 1px dashed #cbd5e1; padding-top: 10px; display: flex; justify-content: space-between; align-items: center;">
+                                <strong style="color:#007aff; font-size:1rem; background: #eff6ff; padding: 2px 8px; border-radius: 6px;">${item.esPiezaAbstracta ? "Unidad / Pza" : ltsTotales.toFixed(2) + " L"}</strong>
+                                <span style="font-size: 0.8rem; color: #d97706; background:#fffbeb; padding: 4px 8px; border-radius: 6px; border: 1px solid #fde68a;">📍 ${item.ubicaciones.join(", ")}</span>
+                            </div>
+                        </li>`;
+      });
+
+      secHtml += `</ul></div>`;
+      return secHtml;
+    }
+
+    html += dibujarCajas(
+      "✅ CAJAS (MATERIAL VIGENTE)",
+      plan.vigentes,
+      "#059669",
+      "#d1fae5",
+    );
+    html += dibujarSueltos(
+      "🛢️ SUELTOS (MATERIAL VIGENTE)",
+      plan.sueltosVigentes,
+      "#059669",
+    );
+
+    html += dibujarCajas(
+      "🚨 CAJAS (MATERIAL CADUCADO)",
+      plan.caducados,
+      "#dc2626",
+      "#fee2e2",
+    );
+    html += dibujarSueltos(
+      "🛢️ SUELTOS (MATERIAL CADUCADO)",
+      plan.sueltosCaducados,
+      "#dc2626",
+    );
+
+    document.getElementById("cuerpo-propuesta").innerHTML = html;
+    document.getElementById("btn-aplicar-reorg").style.display = "inline-flex";
+  }
+
+  window.ejecutarReorganizacion = function () {
+    Swal.fire({
+      title: "¿Confirmar Reorganización?",
+      html: `Esta acción modificará tu base de datos.<br><br>
+               <strong>1.</strong> Creará las nuevas ubicaciones automáticamente.<br>
+               <strong>2.</strong> Moverá físicamente las piezas de los lotes a sus nuevas cajas.`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#10b981",
+      cancelButtonColor: "#94a3b8",
+      confirmButtonText: "✅ Sí, Aplicar Cambios",
+      cancelButtonText: "Cancelar",
+    }).then((result) => {
+      if (result.isConfirmed) {
+        mostrarCargando("Reorganizando almacén... No cierres esta ventana.");
+
+        google.script.run
+          .withSuccessHandler((res) => {
+            ocultarCargando();
+            Swal.fire(
+              "¡Organización Completada!",
+              `Se han empaquetado tus piezas en ${res.totalCajas} cajas nuevas de forma exitosa.`,
+              "success",
+            );
+            cerrarModalGenerico("modalOrganizacion");
+            // Forzamos a recargar la pantalla para ver las cajas nuevas
+            cargarDashboardUbicaciones();
+          })
+          .withFailureHandler((err) => {
+            ocultarCargando();
+            Swal.fire("Error en Base de Datos", err.message, "error");
+          })
+          .ejecutarReorganizacionBackend();
+      }
+    });
+  };
+
+  // ==========================================
+// GENERADOR DE QR DINÁMICO
+// ==========================================
+window.imprimirQR = function(idUbicacion, nombreUbicacion) {
+    if(event) event.stopPropagation();
+
+    // USAMOS LA URL EXACTA QUE NOS MANDÓ EL BACKEND
+    let urlParaQR = `${window.APP_BASE_URL}?ubicacion=${idUbicacion}`;
+    
+    // API Segura para generar el QR
+    let qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(urlParaQR)}`;
+
+    // Creamos la ventana emergente para imprimir
+    let printWindow = window.open('', '', 'width=600,height=600');
+    printWindow.document.write(`
+        <html>
+            <head>
+                <title>Imprimir QR - ${nombreUbicacion}</title>
+                <style>
+                    body { font-family: Arial, sans-serif; text-align: center; margin-top: 50px; }
+                    .etiqueta { border: 2px dashed #000; padding: 20px; display: inline-block; border-radius: 10px; }
+                    h2 { margin: 0 0 10px 0; font-size: 24px; text-transform: uppercase;}
+                    p { margin: 0 0 15px 0; font-size: 12px; color: #555; }
+                    img { width: 250px; height: 250px; }
+                    .footer { font-size: 10px; margin-top: 10px; font-family: monospace; }
+                    @media print {
+                        .no-print { display: none; }
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="no-print" style="margin-bottom: 20px;">
+                    <button onclick="window.print()" style="padding: 10px 20px; font-size: 16px; cursor: pointer; background: #007aff; color: white; border: none; border-radius: 5px;">Imprimir Etiqueta</button>
+                </div>
+                <div class="etiqueta">
+                    <h2>${nombreUbicacion}</h2>
+                    <p>ESCANEAR PARA VER CONTENIDO ACTUALIZADO</p>
+                    <img src="${qrImageUrl}" alt="QR Code" />
+                    <div class="footer">ID: ${idUbicacion}</div>
+                </div>
+            </body>
+        </html>
+    `);
+    printWindow.document.close();
+};
+
+// ==========================================
+// VISTA MÓVIL: RENDERIZADO DE LA CAJA ESCANEADA
+// ==========================================
+window.cargarVistaQR = function(idUbicacion) {
+    // Limpieza indestructible: quitamos cualquier comilla (') o (") y espacios que traiga la URL
+    let idLimpio = String(idUbicacion).replace(/['"]/g, '').trim();
+
+    google.script.run
+        .withSuccessHandler(function(ubicaciones) {
+            // Buscamos usando el ID completamente limpio
+            let ubic = ubicaciones.find(u => String(u.id).trim() === idLimpio);
+            let titulo = document.getElementById("qr-titulo-ubicacion");
+            let contenedor = document.getElementById("qr-contenido-ubicacion");
+
+            if (!ubic) {
+                titulo.innerText = "Caja No Encontrada";
+                contenedor.innerHTML = "<div style='text-align:center; color:#dc2626; padding:30px; background:#fef2f2; border-radius:12px; border:2px dashed #fca5a5;'><b>Error 404:</b><br><br>Esta caja o estante no existe en la base de datos o fue eliminada.</div>";
+                return;
+            }
+
+            titulo.innerText = ubic.nombre;
+
+            if (!ubic.items || ubic.items.length === 0) {
+                contenedor.innerHTML = "<div style='text-align:center; padding:40px 20px; color:#94a3b8; background:#f8fafc; border-radius:12px; border:2px dashed #cbd5e1; font-weight:500;'>📦<br><br>Esta ubicación está actualmente vacía.</div>";
+                return;
+            }
+
+            let html = "";
+            ubic.items.forEach(item => {
+                let uni = item.unidad || "L";
+                let volDisp = (uni === "Pza") ? Math.round(item.volumen) : Number(item.volumen).toFixed(2);
+                
+                let colorBg = "#f8fafc"; let colorBorder = "#e2e8f0"; let colorVol = "#007aff";
+                if(uni === "Kg") { colorBg = "#fffbeb"; colorBorder = "#fde68a"; colorVol = "#d97706"; }
+                if(uni === "Pza") { colorBg = "#faf5ff"; colorBorder = "#e9d5ff"; colorVol = "#9333ea"; }
+
+                html += `
+                <div style="background: ${colorBg}; border: 1px solid ${colorBorder}; border-radius: 12px; padding: 15px; margin-bottom: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
+                        <div style="font-weight:800; color:#1e293b; font-size:1.05rem; line-height:1.2;">${item.producto}</div>
+                        <div style="font-size:1.3rem; font-weight:900; color:${colorVol}; white-space:nowrap; margin-left:10px;">${volDisp} <span style="font-size:0.8rem;">${uni}</span></div>
+                    </div>
+                    <div style="color:#64748b; font-size:0.85rem; margin-bottom:10px;">📦 ${item.presentacion}</div>
+                    
+                    <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px dashed #cbd5e1; padding-top:10px;">
+                        <span style="font-family:monospace; color:#dc2626; font-weight:bold; background:white; padding:4px 8px; border-radius:6px; font-size:0.95rem; border:1px solid #fecaca;">Lote: ${item.lote}</span>
+                        <span style="font-size:0.85rem; color:#64748b; font-weight:600;">⏳ ${item.caducidad || '--'}</span>
+                    </div>
+                </div>`;
+            });
+            contenedor.innerHTML = html;
+        })
+        .withFailureHandler(function(err) {
+            document.getElementById("qr-titulo-ubicacion").innerText = "Error de conexión";
+            document.getElementById("qr-contenido-ubicacion").innerHTML = `<div style="color:#dc2626; text-align:center; padding:20px;">No se pudo conectar con el servidor.<br><br><small>${err.message}</small></div>`;
+        })
+        .obtenerDatosUbicaciones();
+};
+
+</script>
+
+<script>
+  // ==========================================
+  // GESTIÓN DE ENVÍOS (V40 - FIX EMPRESA & RESPONSIVE)
+  // ==========================================
+
+  var LISTA_PEDIDOS_CACHE = [];
+  var FILTRO_ACTUAL_PEDIDOS = "Todos";
+  var ID_PEDIDO_SELECCIONADO = null;
+  var EMPRESA_SELECCIONADA_CACHE = ""; // Variable para guardar la empresa temporalmente
+
+  // --- ESTILOS INYECTADOS (MODAL PERFECTO & RESPONSIVO) ---
+
+  var ESTILOS_MODAL_PREMIUM = `
+<style>
+  /* 1. FORZAR BORRADO DE ESTILOS VIEJOS */
+  #modalDetallePedido .modal-header, 
+  #modalDetallePedido h3,
+  #modalDetallePedido .close { display: none !important; }
+  
+  /* 2. CONTENEDOR PRINCIPAL */
+  #modalDetallePedido .modal-content {
+      padding: 0 !important;
+      border-radius: 16px !important;
+      overflow: hidden !important;
+      background: #f8fafc;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+      width: 95% !important;
+      max-width: 850px !important; 
+      margin: 20px auto;
+  }
+
+  /* HEADER */
+  .clean-header {
+      background: white;
+      padding: 20px 25px;
+      border-bottom: 1px solid #e2e8f0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap; 
+      gap: 10px;
+  }
+  .clean-title-group h3 { font-size: 1.2rem; font-weight: 800; color: #1e293b; margin: 0; letter-spacing: -0.5px; }
+  .clean-title-group span { font-size: 0.8rem; color: #64748b; font-weight: 600; text-transform: uppercase; }
+
+  /* BODY */
+  .clean-body {
+      padding: 25px;
+      overflow-y: auto;
+      max-height: 65vh; 
+  }
+
+  /* LAYOUT RESPONSIVO VERTICAL (CORREGIDO) */
+  .clean-grid {
+      display: flex;
+      flex-direction: column; /* Apilamos verticalmente siempre */
+      gap: 20px;
+      margin-bottom: 20px;
+  }
+  .clean-col {
+      width: 100%; /* Asegura que tomen todo el ancho posible */
+  }
+  
+  /* En móviles */
+  @media (max-width: 700px) {
+      .clean-header { align-items: flex-start; }
+      .clean-footer { flex-direction: column-reverse; }
+      .btn-action-modal { width: 100%; }
+  }
+
+  /* TARJETAS */
+  .info-card {
+      background: white;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 20px;
+      height: 100%;
+      box-sizing: border-box;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+  }
+
+  .card-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 15px;
+      border-bottom: 1px solid #f1f5f9;
+      padding-bottom: 8px;
+  }
+
+  /* DATOS */
+  .data-item { margin-bottom: 10px; font-size: 0.95rem; color: #334155; display: flex; align-items: flex-start; }
+  .data-icon { margin-right: 10px; width: 20px; text-align: center; }
+  .data-bold { font-weight: 700; color: #0f172a; font-size: 1.05rem; }
+
+  /* PRODUCTOS */
+  .prod-item {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 10px 0; border-bottom: 1px dashed #e2e8f0;
+  }
+  .prod-item:last-child { border: none; }
+
+  /* FOOTER */
+  .clean-footer {
+      background: white;
+      padding: 20px 25px;
+      border-top: 1px solid #e2e8f0;
+      display: flex;
+      justify-content: space-between;
+      gap: 15px;
+  }
+
+  .btn-action-modal {
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 0.95rem;
+      border: none;
+      transition: all 0.2s;
+  }
+  .btn-close { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
+  .btn-close:hover { background: #e2e8f0; }
+  .btn-save { background: #2563eb; color: white; box-shadow: 0 4px 6px rgba(37,99,235,0.2); }
+  .btn-save:hover { background: #1d4ed8; transform: translateY(-1px); }
+
+  /* LOADER */
+  .loader-box { padding: 60px; text-align: center; background: white; }
+  .loader-spinner {
+      width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #3b82f6; border-radius: 50%;
+      animation: spin 1s linear infinite; margin: 0 auto 15px;
+  }
+  @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+</style>
+`;
+
+  // 1. CARGAR DATOS
+  function cargarDashboardPedidos() {
+    var loading = document.getElementById("loading-pedidos");
+    var tabla = document.getElementById("tablaPedidosMain");
+
+    if (loading) loading.style.display = "block";
+    if (tabla) tabla.style.display = "none";
+
+    google.script.run
+      .withSuccessHandler(function (lista) {
+        LISTA_PEDIDOS_CACHE = lista || [];
+        renderizarTablaPedidos(LISTA_PEDIDOS_CACHE);
+      })
+      .withFailureHandler(function (err) {
+        console.error(err);
+        if (loading)
+          loading.innerHTML = "<p style='color:red'>Error al cargar</p>";
+      })
+      .obtenerHistorialPedidos();
+  }
+
+  // 2. RENDERIZAR TABLA PRINCIPAL
+  function renderizarTablaPedidos(lista) {
+    var tbody = document.getElementById("tablaPedidosBody");
+    var loading = document.getElementById("loading-pedidos");
+    var tabla = document.getElementById("tablaPedidosMain");
+
+    if (loading) loading.style.display = "none";
+    if (tabla) tabla.style.display = "table";
+    if (tbody) tbody.innerHTML = "";
+
+    if (!lista || lista.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:60px; color:#999;">No hay envíos encontrados.</td></tr>`;
+      return;
+    }
+
+    lista.forEach(function (p) {
+      var tr = document.createElement("tr");
+
+      // Estatus
+      var stClass = "status-pendiente";
+      var iconSt = "⏳";
+      var stTexto = p.estatus || "Pendiente";
+
+      // Ajuste de texto "En Proceso"
+      if (
+        stTexto.indexOf("Enviado") !== -1 ||
+        stTexto.indexOf("Camino") !== -1 ||
+        stTexto.indexOf("Proceso") !== -1
+      ) {
+        stClass = "status-enviado";
+        iconSt = "🚀";
+        stTexto = "En Proceso";
+      }
+      if (stTexto.indexOf("Entregado") !== -1) {
+        stClass = "status-entregado";
+        iconSt = "✅";
+      }
+
+      var nombreCliente = p.cliente || "Cliente";
+      var iniciales = nombreCliente.substring(0, 2).toUpperCase();
+      var fechaStr = p.fecha || "";
+      if (fechaStr.length > 10) fechaStr = fechaStr.substring(0, 10);
+
+      tr.innerHTML = `
+      <td>
+         <span class="id-badge">${p.id}</span>
+         <span class="date-text">${fechaStr}</span>
+      </td>
+      <td>
+         <div class="client-info">
+            <div class="client-avatar">${iniciales}</div>
+            <div>
+               <div style="font-weight:600; color:#1e293b;">${nombreCliente}</div>
+               <div style="font-size:0.8rem; color:#64748b;">${p.empresa || ""}</div>
+            </div>
+         </div>
+      </td>
+      <td>
+         <div style="font-size:0.85rem; color:#334155; line-height:1.4; font-weight:500;">${p.resumenProductos}</div>
+         ${p.guia ? `<div style="font-size:0.75rem; color:#059669; margin-top:4px; font-family:monospace; background:#ecfdf5; display:inline-block; padding:2px 6px; border-radius:4px;">🎫 ${p.guia}</div>` : ""}
+      </td>
+      <td><span class="status-badge ${stClass}">${iconSt} ${stTexto}</span></td>
+      <td style="text-align:right;">
+         <button onclick="verDetallePedido('${p.id}')" class="btn-manage" style="margin-left:auto;">Gestionar ➡️</button>
+      </td>
+    `;
+      tbody.appendChild(tr);
+    });
+
+    if (typeof actualizarNotificaciones === "function")
+      actualizarNotificaciones();
+  }
+
+  // 3. FILTROS
+  function filtrarTablaPedidos() {
+    aplicarFiltrosCombinados();
+  }
+  function filtrarEstado(estado, btn) {
+    document.querySelectorAll(".filter-tab").forEach(function (b) {
+      b.classList.remove("active");
+    });
+    if (btn) btn.classList.add("active");
+    FILTRO_ACTUAL_PEDIDOS = estado;
+    aplicarFiltrosCombinados();
+  }
+  // --- EN frontend/js/pedidos.js.html ---
+
+  // Función para traducir cualquier fecha a formato universal YYYY-MM-DD
+  function parseDateYMD(dateString) {
+    if (!dateString) return "";
+    var cleanStr = String(dateString).split(" ")[0].split("T")[0]; // Quita las horas
+    var parts = cleanStr.match(/\d+/g);
+    if (!parts || parts.length < 3) return "";
+
+    // Si empieza con el año (ej. 2026-02-13)
+    if (parts[0].length === 4) {
+      return (
+        parts[0] +
+        "-" +
+        parts[1].padStart(2, "0") +
+        "-" +
+        parts[2].padStart(2, "0")
+      );
+    }
+    // Si viene de Sheets como DD/MM/YYYY o D/M/YYYY (ej. 13/2/2026)
+    return (
+      parts[2] +
+      "-" +
+      parts[1].padStart(2, "0") +
+      "-" +
+      parts[0].padStart(2, "0")
+    );
+  }
+
+  function aplicarFiltrosCombinados() {
+    var input = document.getElementById("buscadorPedidos");
+    var texto = input ? input.value.toLowerCase() : "";
+
+    var fDesdeInput = document.getElementById("filtroFechaDesde")
+      ? document.getElementById("filtroFechaDesde").value
+      : "";
+    var fHastaInput = document.getElementById("filtroFechaHasta")
+      ? document.getElementById("filtroFechaHasta").value
+      : "";
+
+    var filtrados = LISTA_PEDIDOS_CACHE.filter(function (p) {
+      // 1. Estado (CORREGIDO)
+      var cumpleEstado = true;
+      var estatusStr = (p.estatus || "Pendiente").toLowerCase();
+
+      if (FILTRO_ACTUAL_PEDIDOS === "Pendiente") {
+        // Pestaña Pendientes: Muestra los Pendientes puros y los que están En Camino/Proceso
+        cumpleEstado = estatusStr.includes("pendiente") || 
+                       estatusStr.includes("proceso") || 
+                       estatusStr.includes("camino");
+      } 
+      else if (FILTRO_ACTUAL_PEDIDOS === "Enviado") {
+        // Pestaña Enviados: Muestra ÚNICAMENTE los finalizados (Enviados o Entregados)
+        cumpleEstado = estatusStr.includes("enviado") || 
+                       estatusStr.includes("entregado");
+      }
+
+      // 2. Texto (BÚSQUEDA)
+      var todo = [
+        p.id || "",
+        p.cliente || "",
+        p.empresa || "",
+        p.guia || "",
+        p.resumenProductos || "",
+      ]
+        .join(" ")
+        .toLowerCase();
+
+      var cumpleTexto = !texto || todo.indexOf(texto) !== -1;
+
+      // 3. Fechas
+      var cumpleFecha = true;
+      if (fDesdeInput || fHastaInput) {
+        var fechaPedStr = typeof parseDateYMD === 'function' ? parseDateYMD(p.fecha) : null;
+        if (fechaPedStr) {
+          if (fDesdeInput && fechaPedStr < fDesdeInput) cumpleFecha = false;
+          if (fHastaInput && fechaPedStr > fHastaInput) cumpleFecha = false;
+        }
+      }
+      return cumpleEstado && cumpleTexto && cumpleFecha;
+    });
+
+    renderizarTablaPedidos(filtrados);
+
+    // --- NUEVA FUNCIÓN: LIMPIAR FILTROS ---
+  window.limpiarFiltrosPedidos = function() {
+    // 1. Vaciamos los campos de texto y fecha
+    var inputBusqueda = document.getElementById("buscadorPedidos");
+    var fDesde = document.getElementById("filtroFechaDesde");
+    var fHasta = document.getElementById("filtroFechaHasta");
+
+    if (inputBusqueda) inputBusqueda.value = "";
+    if (fDesde) fDesde.value = "";
+    if (fHasta) fHasta.value = "";
+
+    // 2. Simulamos un "clic" en la pestaña de "Todos" para resetear los estados
+    var btnTodos = document.querySelector("#vista-pedidos .filter-tabs .filter-tab"); 
+    if (btnTodos) {
+      filtrarEstado('Todos', btnTodos); // Esto autoejecuta la búsqueda limpia
+    } else {
+      FILTRO_ACTUAL_PEDIDOS = 'Todos';
+      aplicarFiltrosCombinados();
+    }
+  };
+  
+  }
+
+  // 4. DETALLE DEL PEDIDO (MODAL V40 FINAL)
+  function verDetallePedido(id) {
+    ID_PEDIDO_SELECCIONADO = id;
+
+    // --- TRUCO: Recuperar Empresa del Cache antes de ir al servidor ---
+    var pedidoEnCache = LISTA_PEDIDOS_CACHE.find(function (p) {
+      return p.id === id;
+    });
+    EMPRESA_SELECCIONADA_CACHE =
+      pedidoEnCache && pedidoEnCache.empresa ? pedidoEnCache.empresa : "";
+
+    if (typeof abrirModalGenerico === "function")
+      abrirModalGenerico("modalDetallePedido");
+
+    // Limpiamos el modal con el loader bonito
+    var modalPadre = document.querySelector(
+      "#modalDetallePedido .modal-content",
+    );
+    if (modalPadre) {
+      modalPadre.innerHTML = `
+        ${ESTILOS_MODAL_PREMIUM}
+        <div class="loader-box">
+           <div class="loader-spinner"></div>
+           <h3 style="color:#334155; margin:0;">Cargando Resumen...</h3>
+           <p style="color:#94a3b8; font-size:0.9rem;">Obteniendo detalles del servidor</p>
+        </div>`;
+    }
+
+    google.script.run
+      .withSuccessHandler(renderModalDetalle)
+      .withFailureHandler(function (e) {
+        if (modalPadre)
+          modalPadre.innerHTML = `<div style="padding:30px; text-align:center; color:red;">Error: ${e.message} <br><br><button class="btn-action-modal btn-close" onclick="cerrarModalGenerico('modalDetallePedido')">Cerrar</button></div>`;
+      })
+      .obtenerDetallePedidoCompleto(id);
+  }
+
+  function renderModalDetalle(data) {
+    var modalPadre = document.querySelector(
+      "#modalDetallePedido .modal-content",
+    );
+    if (!modalPadre) return;
+
+    var cab = data.cabecera;
+
+    // --- NUEVAS VALIDACIONES DE ESTADO ---
+    var esCancelado = cab.estatus === "Cancelado";
+    var esFinalizado = cab.estatus === "Entregado" || esCancelado; // Si está cancelado, también bloqueamos edición
+    var disabledAttr = esFinalizado ? "disabled" : "";
+
+    // Bloqueo de Fecha Estimada (si ya tiene valor, no se cambia)
+    var fechaEstVal = cab.fechaEst ? cab.fechaEst.split("T")[0] : "";
+    var lockEst = cab.fechaEst ? "disabled" : ""; // Candado específico
+    var fechaRealVal = cab.fechaReal ? cab.fechaReal.split("T")[0] : "";
+
+// 1. LÓGICA DE LA GUÍA (Input vs Botón de Rescate)
+  let htmlGuia = "";
+  if (cab.guia && cab.guia !== "---" && cab.guia !== "") {
+      htmlGuia = `<span style="background:#eff6ff; color:#2563eb; padding:4px 10px; border-radius:6px; font-weight:bold; font-family:monospace; font-size:1rem;">${cab.guia}</span>`;
+  } else {
+      // 💡 REEMPLAZAMOS EL INPUT POR UN BOTÓN INTELIGENTE
+      htmlGuia = `<button onclick="rescatarDocumentosAduanales('${cab.id}')" style="background:#fffbeb; color:#d97706; border:1px dashed #f59e0b; padding:6px 10px; border-radius:6px; font-weight:bold; font-size:0.85rem; cursor:pointer; width:100%; text-align:left; transition: background 0.2s;" onmouseover="this.style.background='#fef3c7'" onmouseout="this.style.background='#fffbeb'">
+                    ⚠️ Falta Guía (Clic para agregar y generar PDFs)
+                  </button>`;
+  }
+  
+    // 2. LÓGICA DE ITEMS
+    var itemsHtml = "";
+    if (data.items && data.items.length > 0) {
+      itemsHtml = data.items
+        .map(function (i) {
+          let volNum = Number(i.volumen) || 0;
+          let pzasNum = Number(i.piezas) || 0;
+          let prName = String(i.presentacion || "").toLowerCase();
+
+          let uni = "L";
+          if (
+            prName.includes("kg") ||
+            prName.includes("kilo") ||
+            prName.includes("gramo")
+          )
+            uni = "Kg";
+          else if (
+            prName.includes("unid") ||
+            prName.includes("pza") ||
+            prName.includes("pieza")
+          )
+            uni = "Pza";
+
+          let volMostrar = uni === "Pza" ? Math.round(volNum) : volNum;
+          let displayVolumen = `${volMostrar} ${uni}`;
+
+          return `
+          <div class="prod-item">
+             <div>
+                <div style="font-weight:700; color:#334155;">${i.producto}</div>
+                <div style="font-size:0.8rem; color:#64748b;">${i.presentacion} • Lote: <span style="font-family:monospace; color:#333;">${i.lote}</span></div>
+             </div>
+             <div style="text-align:right;">
+                <div style="font-weight:700; color:#2563eb;">${displayVolumen}</div>
+                <div style="font-size:0.75rem; color:#64748b; font-weight:600;">(${pzasNum} pzas)</div>
+             </div>
+          </div>`;
+        })
+        .join("");
+    } else {
+      itemsHtml =
+        "<div style='color:#999; font-style:italic; padding:10px;'>Sin detalles</div>";
+    }
+
+    var displayEmpresa =
+      cab.empresa && cab.empresa.length > 1
+        ? cab.empresa
+        : EMPRESA_SELECCIONADA_CACHE;
+    if (!displayEmpresa || displayEmpresa === "") displayEmpresa = "Particular";
+    var displayEmail =
+      cab.email && cab.email !== "---"
+        ? cab.email
+        : "<span style='color:#94a3b8; font-style:italic;'>No registrado</span>";
+
+    // Colores de Estatus
+    var colorSt = "#f59e0b";
+    var textoStatus = cab.estatus;
+    if (cab.estatus.indexOf("Entregado") !== -1) colorSt = "#10b981";
+    else if (cab.estatus.indexOf("Cancelado") !== -1) colorSt = "#dc2626";
+    else if (
+      cab.estatus.indexOf("Camino") !== -1 ||
+      cab.estatus.indexOf("Enviado") !== -1
+    ) {
+      colorSt = "#3b82f6";
+      textoStatus = "En Proceso";
+    }
+
+    // --- INTELIGENCIA VISUAL PARA DIRECCIÓN DEL TRAYECTO ---
+  var tituloEmpresaUI = "👤 DATOS DEL CLIENTE";
+  var tituloLogisticaUI = "🚚 DETALLES DE ENVÍO";
+
+  if (cab.id.startsWith("EXT-")) {
+      if (cab.comentarios && cab.comentarios.includes("RECEPCIÓN")) {
+          tituloEmpresaUI = "🏢 DATOS DEL REMITENTE (ORIGEN)";
+          tituloLogisticaUI = "📥 DETALLES DE RECEPCIÓN";
+      } else if (cab.comentarios && cab.comentarios.includes("TRIANGULACIÓN")) {
+          tituloEmpresaUI = "🏢 EMPRESA INVOLUCRADA";
+          tituloLogisticaUI = "🔄 DETALLES DE TRIANGULACIÓN";
+      } else {
+          tituloEmpresaUI = "🏢 DATOS DEL DESTINATARIO";
+          tituloLogisticaUI = "📤 DETALLES DE ENVÍO";
+      }
+  }
+
+  // --- VARIABLES DE SEGURIDAD (Agrégalo antes de inyectar el HTML del footer) ---
+    var esAdmin = localStorage.getItem("inventario_rol") === "admin";
+    var esCancelado = (cab.estatus === "Cancelado");
+
+    modalPadre.innerHTML = `
+    ${ESTILOS_MODAL_PREMIUM}
+    <div class="clean-header">
+       <div class="clean-title-group">
+          <span>PEDIDO #${cab.id}</span>
+          <h3 style="color:${colorSt}">${textoStatus}</h3>
+       </div>
+       <div style="text-align:right;">
+          <div style="font-size:0.75rem; color:#64748b; font-weight:700;">TOTAL ENVÍO</div>
+          <div style="font-size:1.5rem; font-weight:800; color:#10b981;">$${Number(cab.costoEnvio || 0).toFixed(2)}</div>
+       </div>
+    </div>
+    
+    <div class="clean-body">
+       <div class="clean-grid">
+          <div class="clean-col">
+              <div class="info-card">
+<div class="card-label">${tituloEmpresaUI}</div>
+                 <div class="data-item"><span class="data-icon">😊</span> <span class="data-bold">${cab.cliente}</span></div>
+                 <div class="data-item"><span class="data-icon">🏢</span> <span style="font-weight:600; color:#475569;">${displayEmpresa}</span></div>
+                 <div class="data-item"><span class="data-icon">📞</span> ${cab.telefono || "--"}</div>
+                 <div class="data-item"><span class="data-icon">✉️</span> ${displayEmail}</div>
+              </div>
+          </div>
+          <div class="clean-col">
+              <div class="info-card">
+<div class="card-label">${tituloLogisticaUI}</div>
+                 <div class="data-item"><span class="data-icon">📦</span> <span class="data-bold">${cab.paqueteria}</span></div>
+                 <div class="data-item"><span class="data-icon">🎫</span> ${htmlGuia}</div>
+                 <div class="data-item" style="margin-top:10px;"><span class="data-icon">📍</span> <span style="line-height:1.4;">${cab.direccion}</span></div>
+              </div>
+          </div>
+       </div>
+
+       <div class="info-card" style="margin-bottom:20px;">
+          <div class="card-label">🛒 CONTENIDO</div>
+          ${itemsHtml} 
+       </div>
+
+       <div class="info-card" style="margin-bottom:20px; background:#fff8f1; border-color:#fef08a;">
+          <div class="card-label" style="color:#d97706; border-bottom-color:#fde68a;">💬 HISTORIAL Y COMENTARIOS</div>
+          <textarea id="txtComentarios" ${disabledAttr} style="width:100%; min-height:80px; padding:12px; border:1px solid #fcd34d; border-radius:8px; resize:vertical; font-family:inherit; background:white; color:#334155; font-size:0.9rem;" placeholder="Agrega notas, motivos de retraso o historial del pedido...">${cab.comentarios || ""}</textarea>
+       </div>
+
+       <div class="info-card" style="margin-bottom:20px; background:#f8fafc; border-color:#e2e8f0;">
+   <div class="card-label">📂 DOCUMENTOS DEL PEDIDO</div>
+   
+   ${ (!cab.guia || cab.guia === '---' || cab.guia === '') && !esFinalizado ? `
+   <div style="background:#fff7ed; border:1px dashed #f59e0b; padding:15px; border-radius:8px; margin-bottom:15px; text-align:center;">
+      <p style="color:#b45309; font-size:0.85rem; margin:0 0 10px 0; font-weight:bold;">⚠️ Documentos Aduanales Pendientes</p>
+      <button onclick="rescatarDocumentosAduanales('${cab.id}')" style="background:#f59e0b; color:white; border:none; padding:8px 15px; border-radius:6px; font-weight:bold; cursor:pointer; box-shadow:0 2px 4px rgba(245,158,11,0.2); transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
+          📝 Ingresar Guía y Generar PDFs
+      </button>
+   </div>
+   ` : ''}
+
+   <div id="contenedor-archivos-pedido" style="min-height: 40px; margin-bottom: 20px;">
+      <div style="color:#94a3b8; font-size:0.85rem; text-align:center;">Cargando documentos...</div>
+   </div>
+
+   <div style="background: white; border: 1px solid #cbd5e1; border-radius: 8px; padding: 15px; display: flex; flex-direction: column; gap: 10px;">
+       <label style="margin: 0; font-size: 0.85rem; font-weight: bold; color: #475569;">➕ Adjuntar Guía o Evidencia Física:</label>
+       
+       <div style="display: flex; gap: 10px; align-items: center; width: 100%; flex-wrap: wrap;">
+           <input type="file" id="inputArchivoPedido" style="display: none;" onchange="document.getElementById('lbl-nombre-archivo').innerText = this.files[0] ? this.files[0].name : 'Ningún archivo seleccionado'">
+           
+           <button type="button" onclick="document.getElementById('inputArchivoPedido').click()" style="background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; padding: 10px 15px; border-radius: 6px; font-weight: 600; font-size: 0.85rem; cursor: pointer; width: auto; margin: 0;">
+               🔍 Seleccionar Archivo
+           </button>
+           
+           <span id="lbl-nombre-archivo" style="font-size: 0.85rem; color: #64748b; flex: 1; min-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Ningún archivo seleccionado</span>
+           
+           <button type="button" onclick="procesarSubidaArchivo('${cab.id}', this)" style="background: #2563eb; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold; font-size: 0.85rem; cursor: pointer; width: auto; margin: 0; box-shadow: 0 2px 4px rgba(37,99,235,0.15);">
+               📤 Subir Documento
+           </button>
+       </div>
+   </div>
+</div>
+
+       <div class="info-card" style="background:${esFinalizado ? "#f0fdf4" : "#fff"}; border-color:${esFinalizado ? "#bbf7d0" : "#e2e8f0"}; margin-bottom:0;">
+          <div class="card-label" style="color:${esFinalizado ? "#15803d" : "#0f172a"};">📅 ACTUALIZACIÓN</div>
+          <div class="clean-grid" style="margin-bottom:0; gap:15px;">
+             <div class="clean-col">
+                <label style="display:block; font-size:0.8rem; font-weight:700; color:#64748b; margin-bottom:5px;">Fecha Estimada</label>
+                <input type="date" id="fechaEst" value="${fechaEstVal}" ${disabledAttr} ${lockEst} style="width:100%; padding:10px; border:1px solid #ccc; border-radius:8px; background:${lockEst ? "#f1f5f9" : "white"};">
+             </div>
+             <div class="clean-col">
+                <label style="display:block; font-size:0.8rem; font-weight:700; color:#64748b; margin-bottom:5px;">Fecha Entrega (Real)</label>
+                <input type="date" id="fechaReal" value="${fechaRealVal}" ${disabledAttr} style="width:100%; padding:10px; border:1px solid #ccc; border-radius:8px;">
+             </div>
+          </div>
+       </div>
+    </div>
+
+<div class="clean-footer" style="display: flex; gap: 12px; flex-wrap: wrap; padding: 20px;">
+       <button onclick="cerrarModalGenerico('modalDetallePedido')" class="btn-action-modal btn-close" style="flex: 1; min-width: 100px; display:flex; align-items:center; justify-content:center;">
+           Cerrar
+       </button>
+       
+       ${ (esCancelado && esAdmin) ? `
+       <button onclick="borrarPedidoPermanente('${cab.id}')" class="btn-action-modal" style="flex: 1; min-width: 140px; background:#fef2f2; color:#dc2626; border:1px solid #fecaca; display:flex; align-items:center; justify-content:center; gap:6px; white-space:nowrap;" title="Eliminar para siempre de la base de datos">
+           🗑️ Borrar Permanente
+       </button>
+       ` : ''}
+
+       ${ !esFinalizado ? `
+       <button onclick="iniciarCancelacionPedido('${cab.id}')" class="btn-action-modal" style="flex: 1; min-width: 140px; background:#fee2e2; color:#dc2626; border:1px solid #fca5a5; display:flex; align-items:center; justify-content:center; gap:6px; white-space:nowrap;">
+           🚨 Cancelar
+       </button>
+       <button onclick="guardarCambiosPedido()" class="btn-action-modal btn-save" style="flex: 2; min-width: 200px; display:flex; align-items:center; justify-content:center;">
+           Guardar Cambios
+       </button>
+       ` : '' }
+    </div>
+  `;
+
+    // Cargar los archivos justo después de renderizar el modal
+    cargarArchivosPedidoUI(cab.id);
+  }
+
+  // --- ELIMINACIÓN PERMANENTE (SOLO ADMIN) ---
+window.borrarPedidoPermanente = function(idPedido) {
+    Swal.fire({
+        title: '¿Borrar Definitivamente?',
+        html: "Esta acción <b>eliminará el pedido</b> de la base de datos y enviará su carpeta de documentos en Google Drive a la papelera.<br><br><i>No se puede deshacer.</i>",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc2626',
+        cancelButtonColor: '#64748b',
+        confirmButtonText: 'Sí, borrar para siempre',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            if(typeof mostrarCargando === 'function') mostrarCargando("Borrando pedido y limpiando Drive...");
+            
+            google.script.run
+                .withSuccessHandler(function(res) {
+                    if(typeof ocultarCargando === 'function') ocultarCargando();
+                    if(res.success) {
+                        Swal.fire("Eliminado", "El pedido ha sido borrado por completo del sistema.", "success");
+                        cerrarModalGenerico('modalDetallePedido');
+                        cargarDashboardPedidos(); // Refrescar la tabla para que desaparezca
+                    } else {
+                        Swal.fire("Error", res.error, "error");
+                    }
+                })
+                .withFailureHandler(function(err) {
+                    if(typeof ocultarCargando === 'function') ocultarCargando();
+                    Swal.fire("Error de Conexión", err.message, "error");
+                })
+                .eliminarPedidoDefinitivo(idPedido);
+        }
+    });
+};
+
+  // --- ACTUALIZAR GUARDADO PARA INCLUIR COMENTARIOS ---
+  function guardarCambiosPedido() {
+    var fe = document.getElementById("fechaEst").value;
+    var fr = document.getElementById("fechaReal").value;
+    var comentarios = document.getElementById("txtComentarios")
+      ? document.getElementById("txtComentarios").value
+      : "";
+
+    var inputGuia = document.getElementById("inputNuevaGuia");
+    var nuevaGuia = "";
+    if (inputGuia) nuevaGuia = inputGuia.value.trim();
+
+    var nuevoSt = "Pendiente";
+    if (fe) nuevoSt = "En Camino";
+    if (fr) nuevoSt = "Entregado";
+
+    var btn = document.querySelector(".btn-save");
+    if (btn) {
+      btn.innerText = "Guardando...";
+      btn.disabled = true;
+    }
+
+    google.script.run
+      .withSuccessHandler(function () {
+        if (typeof mostrarToast === "function")
+          mostrarToast("Pedido actualizado ✅", "success");
+        if (typeof cerrarModalGenerico === "function")
+          cerrarModalGenerico("modalDetallePedido");
+        cargarDashboardPedidos();
+      })
+      .withFailureHandler(function (err) {
+        if (typeof mostrarToast === "function")
+          mostrarToast("Error: " + err.message, "error");
+        if (btn) {
+          btn.innerText = "Guardar Cambios";
+          btn.disabled = false;
+        }
+      })
+      .actualizarPedido(
+        ID_PEDIDO_SELECCIONADO,
+        fe,
+        fr,
+        nuevoSt,
+        nuevaGuia,
+        comentarios,
+      );
+  }
+
+  // --- ASISTENTE DE CANCELACIÓN Y DEVOLUCIÓN (DISEÑO PREMIUM) ---
+  window.iniciarCancelacionPedido = function (idPedido) {
+    // PASO 1: SELECCIÓN DE DESTINO
+    Swal.fire({
+      title: "Cancelar Pedido",
+      html: `
+            <p style="color:#64748b; font-size:0.95rem; margin-top:0; margin-bottom:15px;">¿Qué pasará con la mercancía de este envío?</p>
+            <select id="swal-tipo-cancelacion" style="width: 100%; padding: 12px 15px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 1rem; color: #334155; outline: none; background-color: #f8fafc; cursor: pointer; box-shadow: inset 0 1px 2px rgba(0,0,0,0.02); font-family: inherit;">
+                <option value="" disabled selected>Selecciona una opción...</option>
+                <option value="retorno">📦 Regresó a Almacén (Reingresar Stock)</option>
+                <option value="merma">💥 Pérdida / Merma / Daño (No reingresar)</option>
+            </select>
+        `,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#007aff", // Azul
+      cancelButtonColor: "#94a3b8", // Gris
+      confirmButtonText: "Siguiente ➡️",
+      cancelButtonText: "Atrás",
+      preConfirm: () => {
+        const val = document.getElementById("swal-tipo-cancelacion").value;
+        if (!val)
+          Swal.showValidationMessage("Por favor selecciona una opción.");
+        return val;
+      },
+    }).then((result) => {
+      if (result.isConfirmed && result.value) {
+        let tipoCancelacion = result.value;
+
+        // PASO 2: MOTIVO DE CANCELACIÓN
+        Swal.fire({
+          title: "Motivo de Cancelación",
+          html: `
+                    <p style="color:#64748b; font-size:0.9rem; margin-top:0; margin-bottom:10px;">Este comentario quedará guardado en el historial permanentemente.</p>
+                    <textarea id="swal-motivo" placeholder="Ej: El cliente se arrepintió, paquete dañado en tránsito..." style="width: 100%; box-sizing: border-box; min-height: 120px; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.95rem; color: #334155; outline: none; resize: vertical; background-color: #f8fafc; font-family: inherit; box-shadow: inset 0 1px 2px rgba(0,0,0,0.02);"></textarea>
+                `,
+          showCancelButton: true,
+          confirmButtonText: "Confirmar Cancelación 🚨",
+          confirmButtonColor: "#dc2626", // Rojo para la acción destructiva
+          cancelButtonColor: "#94a3b8",
+          cancelButtonText: "Cancelar",
+          preConfirm: () => {
+            const text = document.getElementById("swal-motivo").value.trim();
+            if (!text)
+              Swal.showValidationMessage(
+                "Debes ingresar un motivo para el historial.",
+              );
+            return text;
+          },
+        }).then((motivoResult) => {
+          if (motivoResult.isConfirmed) {
+            let motivo = motivoResult.value;
+
+            // PASO 3 (SOLO SI ES RETORNO): ELEGIR UBICACIÓN
+            if (tipoCancelacion === "retorno") {
+              let optionsHtml = "";
+              if (
+                window.CACHE_CATALOGOS &&
+                window.CACHE_CATALOGOS.ubicaciones
+              ) {
+                window.CACHE_CATALOGOS.ubicaciones.forEach((u) => {
+                  optionsHtml += `<option value="${u.id}">${u.nombre}</option>`;
+                });
+              }
+              Swal.fire({
+                title: "¿A qué ubicación regresa?",
+                html: `
+                                <p style="color:#64748b; font-size:0.9rem; margin-top:0; margin-bottom:15px;">Selecciona el estante o área física donde se colocará el material devuelto.</p>
+                                <select id="swal-ubic-retorno" style="width: 100%; padding: 12px 15px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 1rem; color: #334155; outline: none; background-color: #f8fafc; cursor: pointer; box-shadow: inset 0 1px 2px rgba(0,0,0,0.02); font-family: inherit;">
+                                    <option value="" disabled selected>Selecciona la ubicación...</option>
+                                    ${optionsHtml}
+                                </select>
+                            `,
+                showCancelButton: true,
+                confirmButtonText: "Ejecutar Retorno",
+                confirmButtonColor: "#dc2626",
+                cancelButtonColor: "#94a3b8",
+                cancelButtonText: "Cancelar",
+                preConfirm: () => {
+                  const val =
+                    document.getElementById("swal-ubic-retorno").value;
+                  if (!val)
+                    Swal.showValidationMessage(
+                      "Debes elegir una ubicación destino.",
+                    );
+                  return val;
+                },
+              }).then((ubicResult) => {
+                if (ubicResult.isConfirmed && ubicResult.value) {
+                  ejecutarCancelacionBackend(
+                    idPedido,
+                    tipoCancelacion,
+                    ubicResult.value,
+                    motivo,
+                  );
+                }
+              });
+            } else {
+              // Si es merma, se ejecuta directo sin pedir ubicación
+              ejecutarCancelacionBackend(
+                idPedido,
+                tipoCancelacion,
+                null,
+                motivo,
+              );
+            }
+          }
+        });
+      }
+    });
+  };
+  function ejecutarCancelacionBackend(idPedido, tipo, ubicacion, motivo) {
+    mostrarCargando("Procesando Cancelación...");
+    google.script.run
+      .withSuccessHandler(() => {
+        ocultarCargando();
+        Swal.fire(
+          "¡Cancelado!",
+          "El pedido y el inventario han sido actualizados.",
+          "success",
+        );
+        cerrarModalGenerico("modalDetallePedido");
+        cargarDashboardPedidos();
+        // Actualizamos la tabla de productos para reflejar el stock que regresó
+        if (
+          tipo === "retorno" &&
+          typeof cargarDashboardProductos === "function"
+        )
+          cargarDashboardProductos();
+      })
+      .withFailureHandler((err) => {
+        ocultarCargando();
+        Swal.fire("Error", err.message, "error");
+      })
+      .cancelarPedido(idPedido, tipo, ubicacion, motivo);
+  }
+
+  // --- LÓGICA DE ARCHIVOS (NUEVO) ---
+
+  function cargarArchivosPedidoUI(idPedido) {
+    google.script.run
+      .withSuccessHandler(function (res) {
+        var div = document.getElementById("contenedor-archivos-pedido");
+        if (!div) return;
+        if (!res.success) {
+          div.innerHTML =
+            "<span style='color:red; font-size:0.85rem;'>Error al cargar: " +
+            res.error +
+            "</span>";
+          return;
+        }
+
+        let html = "";
+        if (res.urlCarpeta) {
+          html += `<div style="margin-bottom:10px; text-align:right;">
+                      <a href="${res.urlCarpeta}" target="_blank" style="font-size:0.8rem; color:#0f172a; text-decoration:none; font-weight:bold; background:#e2e8f0; padding:4px 10px; border-radius:6px;">📁 Abrir Carpeta en Drive</a>
+                   </div>`;
+        }
+
+        if (res.archivos.length === 0) {
+          html +=
+            "<div style='color:#94a3b8; font-size:0.85rem; font-style:italic; text-align:center; padding:10px;'>No hay documentos adjuntos.</div>";
+        } else {
+          res.archivos.forEach((f) => {
+            html += `<div style="display:flex; align-items:center; justify-content:space-between; padding:8px 12px; background:white; border:1px solid #e2e8f0; border-radius:6px; margin-bottom:6px; box-shadow:0 1px 2px rgba(0,0,0,0.02);">
+                          <span style="font-size:0.85rem; color:#334155; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:80%;" title="${f.nombre}">📄 ${f.nombre}</span>
+                          <a href="${f.url}" target="_blank" style="font-size:0.8rem; color:#10b981; font-weight:bold; text-decoration:none;">Ver ➡️</a>
+                       </div>`;
+          });
+        }
+        div.innerHTML = html;
+      })
+      .obtenerArchivosPedido(idPedido);
+  }
+
+  function procesarSubidaArchivo(idPedido, btnElement) {
+    const input = document.getElementById("inputArchivoPedido");
+    if (!input.files || input.files.length === 0) {
+      return Swal.fire("Atención", "Selecciona un archivo primero.", "warning");
+    }
+
+    const file = input.files[0];
+    const reader = new FileReader();
+
+    const originalText = btnElement.innerText;
+    btnElement.innerText = "Subiendo ⏳...";
+    btnElement.disabled = true;
+
+    // Convertimos el archivo a Base64 para poder enviarlo a Google Apps Script
+    reader.onload = function (e) {
+      const dataUrl = e.target.result;
+      const base64Data = dataUrl.split(",")[1];
+      const mimeType = dataUrl.split(";")[0].split(":")[1];
+
+      google.script.run
+        .withSuccessHandler(function (res) {
+          btnElement.innerText = originalText;
+          btnElement.disabled = false;
+
+          // LIMPIEZA DEL INPUT Y DEL TEXTO VISUAL
+          input.value = "";
+          document.getElementById("lbl-nombre-archivo").innerText =
+            "Ningún archivo seleccionado";
+
+          if (res.success) {
+            mostrarToast("Archivo guardado en Drive ✅", "success");
+            cargarArchivosPedidoUI(idPedido); // Refrescar la lista de archivos
+          } else {
+            Swal.fire("Error", res.error, "error");
+          }
+        })
+        .withFailureHandler(function (err) {
+          btnElement.innerText = originalText;
+          btnElement.disabled = false;
+          Swal.fire("Error de Conexión", err.message, "error");
+        })
+        .subirArchivoPedido(idPedido, file.name, base64Data, mimeType);
+    };
+
+    reader.readAsDataURL(file);
+  }
+
+  // --- SISTEMA DE RESCATE DE GUÍAS (DOCUMENTOS PENDIENTES) ---
+window.rescatarDocumentosAduanales = function(idPedido) {
+    Swal.fire({
+        title: 'Generar Docs. Pendientes',
+        html: `
+            <div style="text-align:left; background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #cbd5e1;">
+                <p style="font-size:0.85rem; color:#64748b; margin-top:0; margin-bottom:15px; line-height: 1.4;">Ingresa el número de guía que te entregó la paquetería para imprimirlo en los documentos oficiales y liberar el envío.</p>
+                
+                <label style="font-weight:bold; font-size:0.85rem; color:#334155; display:block; margin-bottom:5px;">Número de Guía / Tracking *</label>
+                <input type="text" id="swal-guia-rescue" class="input-modern" style="margin-bottom:15px; font-family:monospace; border-color:#3b82f6; font-size: 1.1rem; color: #1e40af; font-weight: bold;" placeholder="Ej. 770123456789" autocomplete="off">
+                
+                <label style="font-weight:bold; font-size:0.85rem; color:#334155; display:block; margin-bottom:5px;">Número de Bultos / Cajas</label>
+                <input type="number" id="swal-bultos-rescue" class="input-modern" style="margin-bottom:20px;" value="1" min="1">
+
+                <label style="font-weight:bold; font-size:0.85rem; color:#334155; display:block; margin-bottom:8px; border-bottom: 1px solid #cbd5e1; padding-bottom: 5px;">Documentos a generar:</label>
+                <div style="display:flex; flex-direction:column; gap:10px;">
+                    <label style="display:flex; align-items:center; gap:8px; cursor:pointer;"><input type="checkbox" id="chk-rescue-prof" checked style="transform:scale(1.2);"> Proforma</label>
+                    <label style="display:flex; align-items:center; gap:8px; cursor:pointer;"><input type="checkbox" id="chk-rescue-pl" checked style="transform:scale(1.2);"> Packing List</label>
+                    <label style="display:flex; align-items:center; gap:8px; cursor:pointer; color:#7e22ce; font-weight:bold;"><input type="checkbox" id="chk-rescue-ci" style="transform:scale(1.2);"> Commercial Invoice (FedEx)</label>
+                </div>
+            </div>
+        `,
+        showCancelButton: true,
+        confirmButtonText: '🚀 Generar Documentos',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#2563eb',
+        preConfirm: () => {
+            const guia = document.getElementById('swal-guia-rescue').value.trim();
+            const bultos = document.getElementById('swal-bultos-rescue').value;
+            
+            if (!guia) {
+                Swal.showValidationMessage('El número de guía es obligatorio.');
+                return false;
+            }
+            return {
+                guia: guia,
+                bultos: bultos,
+                proforma: document.getElementById('chk-rescue-prof').checked,
+                pl: document.getElementById('chk-rescue-pl').checked,
+                ci: document.getElementById('chk-rescue-ci').checked
+            }
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // Mandamos llamar a nuestra nueva función backend
+            Swal.fire({ title: 'Imprimiendo PDFs...', html: 'Construyendo documentos y guardando en Drive.', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
+            
+            api.generarDocumentosPendientes(idPedido, result.value, function(res) {
+                if (res.success) {
+                    Swal.fire("¡Documentos Listos!", "Se generaron y guardaron en la carpeta del pedido exitosamente.", "success");
+                    // Recargamos el modal para que desaparezca el cartel amarillo y aparezcan los nuevos PDFs en la lista
+                    verDetallePedido(idPedido); 
+                    cargarDashboardPedidos(); // Actualizamos la tabla de fondo
+                } else {
+                    Swal.fire("Error en Generación", res.error, "error");
+                }
+            });
+        }
+    });
+};
+
+function procesarSubidaArchivo(idPedido, btnElement) {
+  const input = document.getElementById("inputArchivoPedido");
+  if (!input || !input.files || input.files.length === 0) {
+      return Swal.fire("Atención", "Selecciona un archivo primero usando el botón gris.", "warning");
+  }
+
+  const file = input.files[0];
+  const reader = new FileReader();
+
+  const originalText = btnElement.innerText;
+  btnElement.innerText = "Subiendo... ⏳";
+  btnElement.disabled = true;
+
+  // Convertimos el binario de tu explorador a Base64 para transportarlo por Google Apps Script
+  reader.onload = function (e) {
+      const dataUrl = e.target.result;
+      const base64Data = dataUrl.split(",")[1];
+      const mimeType = dataUrl.split(";")[0].split(":")[1];
+
+      google.script.run
+        .withSuccessHandler(function (res) {
+          btnElement.innerText = originalText;
+          btnElement.disabled = false;
+
+          // Restablecemos el formulario visual
+          input.value = "";
+          const lbl = document.getElementById("lbl-nombre-archivo");
+          if(lbl) lbl.innerText = "Ningún archivo seleccionado";
+
+          if (res.success) {
+              if (typeof mostrarToast === "function") mostrarToast("¡Documento guardado en Drive con éxito! ✅", "success");
+              cargarArchivosPedidoUI(idPedido); // Refresca en tiempo real la lista superior del modal
+          } else {
+              Swal.fire("Error en Subida", res.error, "error");
+          }
+        })
+        .withFailureHandler(function (err) {
+          btnElement.innerText = originalText;
+          btnElement.disabled = false;
+          Swal.fire("Error de Red", err.message, "error");
+        })
+        .subirArchivoPedido(idPedido, file.name, base64Data, mimeType); // Detona el cargador en Utils.gs
+  };
+
+  reader.readAsDataURL(file);
+}
+
+
+</script>
