@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+      body { background-color: #eef2f5; font-family: 'Segoe UI', Roboto, sans-serif; color: #333; font-size: 0.95rem; }
+      h2 { font-weight: 600; color: #2c3e50; }
+      .card { border-radius: 4px; box-shadow: 0 2px 5px rgba(0,0,0,0.08); border: 1px solid #dce0e4; }
+      .form-label { font-size: 0.85rem; font-weight: 600; color: #495057; text-transform: uppercase; margin-bottom: 4px; }
+      .form-control, .form-select { border-radius: 3px; font-size: 0.95rem; }
+      .input-locked { background-color: #e9ecef; cursor: not-allowed; font-weight: bold; color: #495057; }
+      
+      .btn-primary-custom { background-color: #2c3e50; border-color: #2c3e50; color: white; font-weight: 500; }
+      .btn-primary-custom:hover { background-color: #1a252f; border-color: #1a252f; color: white; }
+      
+      .summary-card { border-left: 4px solid #2c3e50; text-align: center; padding: 12px; background: white; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); cursor: pointer; transition: all 0.2s ease; }
+      .summary-card:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+      .summary-card.active-filter { background-color: #f8f9fa; border-width: 0 0 0 8px; }
+      .summary-title { font-size: 0.75rem; text-transform: uppercase; color: #6c757d; font-weight: bold; margin-bottom: 5px; }
+      .summary-value { font-size: 1.6rem; font-weight: bold; color: #2c3e50; line-height: 1; }
+      
+      .border-total { border-left-color: #2c3e50; }
+      .border-iniciado { border-left-color: #f39c12; }
+      .border-proceso { border-left-color: #3498db; }
+      .border-completo { border-left-color: #28a745; }
+      .border-cancelado { border-left-color: #6c757d; }
+
+      .table { margin-bottom: 0; }
+      .table thead th { background-color: white; color: #6c757d; font-size: 0.8rem; text-transform: uppercase; }
+      .table tbody td { vertical-align: middle; }
+      
+      .status-container { display: flex; align-items: center; font-weight: 500; }
+      .status-dot { height: 8px; width: 8px; border-radius: 50%; display: inline-block; margin-right: 8px; }
+      .dot-iniciado { background-color: #f39c12; } .text-iniciado { color: #d68910; }
+      .dot-proceso { background-color: #3498db; } .text-proceso { color: #2980b9; }
+      .dot-completo { background-color: #28a745; } .text-completo { color: #28a745; }
+      .dot-cancelado { background-color: #6c757d; } .text-cancelado { color: #6c757d; }
+      
+      .container-main { max-width: 1300px; margin-top: 30px; margin-bottom: 40px; }
+      .btn-editar { font-size: 0.8rem; padding: 4px 10px; background-color: #e9ecef; border: none; color: #2c3e50; font-weight: bold; border-radius: 3px; }
+      .btn-editar:hover { background-color: #ced4da; }
+      
+      .btn-filtro { font-weight: 600; font-size: 0.85rem; padding: 6px 16px; border-radius: 20px; transition: all 0.2s; border: 1px solid #ced4da; background-color: white; color: #495057; }
+      .btn-filtro:hover { background-color: #e9ecef; }
+      .btn-filtro.active { background-color: #2c3e50; color: white; border-color: #2c3e50; }
+      .badge-ano { background-color: #e9ecef; color: #495057; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; border: 1px solid #ced4da;}
+      
+      .obs-text { max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 0.85rem; color: #6c757d; }
+    </style>
+  </head>
+  <body>
+    <div class="container container-main">
+      
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="m-0">Sistema de Gestión de SKUs</h2>
+        <div id="botonesHeader">
+          <button class="btn btn-primary-custom me-2" onclick="abrirModalNuevo()">➕ Nuevo SKU</button>
+          <button class="btn btn-success" onclick="descargarCSV()" id="btnDescargarCSV">📥 Descargar Reporte (CSV)</button>
+        </div>
+      </div>
+      
+      <div class="row mb-4 g-2" id="dashboardSeccion">
+        <div class="col"><div class="summary-card border-total active-filter" id="cardTotal" onclick="filtrarPorEstatusDashboard('TODOS')"><div class="summary-title">Total</div><div class="summary-value" id="countTotal">0</div></div></div>
+        <div class="col"><div class="summary-card border-iniciado" id="cardIniciado" onclick="filtrarPorEstatusDashboard('Iniciado')"><div class="summary-title">Iniciados</div><div class="summary-value" id="countIniciado">0</div></div></div>
+        <div class="col"><div class="summary-card border-proceso" id="cardProceso" onclick="filtrarPorEstatusDashboard('En Proceso')"><div class="summary-title">En Proceso</div><div class="summary-value" id="countProceso">0</div></div></div>
+        <div class="col"><div class="summary-card border-completo" id="cardCompleto" onclick="filtrarPorEstatusDashboard('Completo')"><div class="summary-title">Completos</div><div class="summary-value" id="countCompleto">0</div></div></div>
+        <div class="col"><div class="summary-card border-cancelado" id="cardCancelado" onclick="filtrarPorEstatusDashboard('Cancelado')"><div class="summary-title">Cancelados</div><div class="summary-value" id="countCancelado">0</div></div></div>
+      </div>
+
+      <div class="card">
+        <div class="card-body p-0">
+          <div class="d-flex justify-content-between align-items-center p-4 border-bottom flex-wrap gap-3" style="background-color: #f8f9fa;">
+            <h5 class="m-0" style="font-weight: 600; color: #495057;" id="tituloDirectorio">Directorio de Productos</h5>
+            <div class="d-flex align-items-center gap-3 flex-wrap">
+                <input type="text" id="searchInput" class="form-control form-control-sm" style="width: 250px;" placeholder="Buscar..." onkeyup="filtrarTablaLocal()">
+                
+                <div id="toolbarFiltros" class="d-flex gap-2">
+                  <button id="btnTodos" class="btn btn-filtro active" onclick="activarTodos()">Ver Todos Años</button>
+                  <select id="selectAno" class="form-select form-select-sm" style="width: 140px; font-weight: 600;" onchange="aplicarFiltroPorAno()">
+                    <option value="" disabled selected>Filtrar año...</option>
+                    <option value="2023">2023</option>
+                    <option value="2024">2024</option>
+                    <option value="2025">2025</option>
+                    <option value="2026">2026</option>
+                  </select>
+                </div>
+                
+                <button id="btnVaciarPapelera" class="btn btn-danger btn-sm d-none" onclick="confirmarVaciarPapelera()">🔥 Vaciar Papelera</button>
+                <button id="btnPapelera" class="btn btn-outline-danger btn-sm" onclick="verPapelera()">🗑️ Papelera</button>
+                <button id="btnVolver" class="btn btn-primary-custom btn-sm d-none" onclick="volverInicio()">⬅ Volver al Directorio</button>
+            </div>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-hover" id="skuTable">
+              <thead>
+                <tr>
+                  <th>Año</th>
+                  <th>Nombre SKU</th>
+                  <th>Nombre Real</th>
+                  <th>FERT</th>
+                  <th>HAWA</th>
+                  <th>Status</th>
+                  <th>Observaciones</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="tablaCuerpo"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal fade" id="modalNuevoSku" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header text-white" style="background-color: #2c3e50;">
+            <h5 class="modal-title">Registrar Nuevo SKU</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <form id="formNuevoSku" class="row g-3">
+              <div class="col-md-3">
+                <label class="form-label">Año</label>
+                <input type="number" id="formAno" class="form-control input-locked" readonly>
+              </div>
+              <div class="col-md-9">
+                <label class="form-label">Nombre SKU</label>
+                <input type="text" id="formNombreSku" class="form-control" placeholder="Requerido" required>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Nombre Real</label>
+                <input type="text" id="formNombreReal" class="form-control" placeholder="Opcional al inicio">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">SKU FERT</label>
+                <input type="text" id="formFert" class="form-control" placeholder="Opcional">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">SKU HAWA</label>
+                <input type="text" id="formHawa" class="form-control" placeholder="Opcional">
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="button" class="btn btn-primary-custom" onclick="enviarFormulario()">Iniciar Registro</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal fade" id="modalEdicion" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header bg-dark text-white">
+            <h5 class="modal-title">Actualizar Información del SKU</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <form id="formEditarSku" class="row g-3">
+              <input type="hidden" id="editNombreOriginal">
+              <div class="col-md-2">
+                <label class="form-label">Año</label>
+                <input type="number" id="editAno" class="form-control input-locked" readonly>
+              </div>
+              <div class="col-md-5">
+                <label class="form-label">Nombre SKU</label>
+                <input type="text" id="editNombreSku" class="form-control" required>
+              </div>
+              <div class="col-md-5">
+                <label class="form-label">Nombre Real</label>
+                <input type="text" id="editNombreReal" class="form-control">
+              </div>
+              <div class="col-md-3">
+                <label class="form-label">SKU FERT</label>
+                <input type="text" id="editFert" class="form-control">
+              </div>
+              <div class="col-md-3">
+                <label class="form-label">SKU HAWA</label>
+                <input type="text" id="editHawa" class="form-control">
+              </div>
+               <div class="col-md-6">
+                <label class="form-label">Status Actual</label>
+                <select id="editStatus" class="form-select border-primary" style="font-weight: bold;"></select>
+              </div>
+              <div class="col-md-12">
+                <label class="form-label">Observaciones</label>
+                <textarea id="editObs" class="form-control" rows="2" placeholder="Agrega notas o razones importantes..."></textarea>
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer d-flex justify-content-between">
+            <button type="button" id="btnEliminarModal" class="btn btn-outline-danger" onclick="confirmarEliminar()">Mover a Papelera</button>
+            <div>
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+              <button type="button" id="btnGuardarModal" class="btn btn-primary-custom" onclick="guardarEdicion()">Guardar Cambios</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+      let datosGlobales = []; 
+      let filtroActualAno = "TODOS"; 
+      let filtroActualDashboard = "TODOS"; 
+      let modalEdicion, modalNuevo; 
+      let enPapelera = false; 
+
+      function setCurrentYear() { document.getElementById('formAno').value = new Date().getFullYear(); }
+
+      function abrirModalNuevo() {
+        document.getElementById('formNuevoSku').reset();
+        setCurrentYear();
+        if(!modalNuevo) { modalNuevo = new bootstrap.Modal(document.getElementById('modalNuevoSku')); }
+        modalNuevo.show();
+      }
+
+      function enviarFormulario() {
+        const datos = {
+          ano: document.getElementById('formAno').value,
+          nombreSku: document.getElementById('formNombreSku').value,
+          nombreReal: document.getElementById('formNombreReal').value,
+          skuFert: document.getElementById('formFert').value,
+          skuHawa: document.getElementById('formHawa').value,
+          observaciones: "", 
+          status: "Iniciado" 
+        };
+
+        if(!datos.nombreSku) { Swal.fire({ icon: 'warning', text: 'El Nombre del SKU es obligatorio.' }); return; }
+
+        modalNuevo.hide(); // Ocultamos el pop-up de inmediato
+        Swal.fire({ title: 'Guardando...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
+
+        google.script.run
+          .withSuccessHandler(res => {
+            Swal.fire({ icon: 'success', title: '¡Iniciado!', timer: 1200, showConfirmButton: false });
+            filtrarPorEstatusDashboard('TODOS');
+            cargarDatosDelServidor(); 
+          })
+          .withFailureHandler(err => {
+            Swal.fire({ icon: 'error', title: '¡Alerta!', text: err.message || err });
+            modalNuevo.show(); // Lo volvemos a mostrar si hubo error (ej. duplicado)
+          })
+          .guardarNuevoSKU(datos); 
+      }
+
+      function abrirModalEdicion(ano, nombreSku, nombreReal, fert, hawa, status, obs) {
+        document.getElementById('editAno').value = ano;
+        document.getElementById('editNombreOriginal').value = nombreSku; 
+        document.getElementById('editNombreSku').value = nombreSku;
+        document.getElementById('editNombreReal').value = nombreReal;
+        document.getElementById('editFert').value = fert;
+        document.getElementById('editHawa').value = hawa;
+        document.getElementById('editObs').value = (obs && obs !== 'undefined') ? obs : ""; 
+        
+        const selectStatus = document.getElementById('editStatus');
+        selectStatus.innerHTML = ''; 
+        let opciones = [];
+        if (status === "Iniciado") opciones = ["Iniciado", "En Proceso", "Completo", "Cancelado"];
+        else if (status === "En Proceso") opciones = ["En Proceso", "Completo", "Cancelado"];
+        else if (status === "Completo") opciones = ["Completo"];
+        else if (status === "Cancelado") opciones = ["Cancelado"];
+        else opciones = ["Iniciado", "En Proceso", "Completo", "Cancelado"];
+
+        opciones.forEach(op => {
+            let option = document.createElement("option"); option.value = op; option.text = op;
+            if (op === status) option.selected = true;
+            selectStatus.appendChild(option);
+        });
+        selectStatus.disabled = (opciones.length === 1);
+
+        if(!modalEdicion) { modalEdicion = new bootstrap.Modal(document.getElementById('modalEdicion')); }
+        modalEdicion.show();
+      }
+
+      function guardarEdicion() {
+        const nombreSkuOriginal = document.getElementById('editNombreOriginal').value;
+        const datos = {
+          ano: document.getElementById('editAno').value,
+          nombreSku: document.getElementById('editNombreSku').value,
+          nombreReal: document.getElementById('editNombreReal').value,
+          skuFert: document.getElementById('editFert').value,
+          skuHawa: document.getElementById('editHawa').value,
+          observaciones: document.getElementById('editObs').value, 
+          status: document.getElementById('editStatus').value
+        };
+        
+        if (datos.skuFert && datos.skuHawa && datos.status === "Iniciado") {
+            datos.status = "Completo"; 
+        } else if (!datos.skuFert && !datos.skuHawa && datos.status === "Completo") {
+            Swal.fire({ icon: 'warning', text: 'No puedes marcar como Completo si no hay SKUs asignados.' }); return;
+        }
+
+        let index = datosGlobales.findIndex(f => f.nombreSku === nombreSkuOriginal && f.ano.toString() === datos.ano.toString());
+        if(index !== -1) { datosGlobales[index] = datos; renderizarTablaBaseDatos(); }
+
+        modalEdicion.hide();
+        Swal.fire({ icon: 'success', text: '¡Guardado!', timer: 1000, showConfirmButton: false });
+
+        google.script.run
+          .withFailureHandler(err => {
+            Swal.fire({ icon: 'error', title: 'Error de Servidor', text: err.message || err });
+            cargarDatosDelServidor(); 
+          }).actualizarSKU(datos, nombreSkuOriginal); 
+      }
+
+      function confirmarEliminar() {
+        const nombreSkuOriginal = document.getElementById('editNombreOriginal').value;
+        const ano = document.getElementById('editAno').value;
+
+        Swal.fire({
+          title: '¿Mover a papelera?', text: `Se moverá el SKU "${nombreSkuOriginal}".`, icon: 'warning', showCancelButton: true, confirmButtonColor: '#dc3545', cancelButtonColor: '#6c757d', confirmButtonText: 'Sí, enviar a Papelera', cancelButtonText: 'Cancelar'
+        }).then((result) => {
+          if (result.isConfirmed) {
+            
+            let index = datosGlobales.findIndex(f => f.nombreSku === nombreSkuOriginal && f.ano.toString() === ano.toString());
+            if(index !== -1) { datosGlobales.splice(index, 1); renderizarTablaBaseDatos(); }
+            
+            modalEdicion.hide(); 
+            Swal.fire({ icon: 'success', text: 'Movido a Papelera', timer: 1000, showConfirmButton: false });
+
+            google.script.run
+              .withFailureHandler(err => { Swal.fire({ icon: 'error', text: err }); cargarDatosDelServidor(); })
+              .enviarAPapelera(ano, nombreSkuOriginal);
+          }
+        });
+      }
+
+      // --- FUNCIONES DE PAPELERA ---
+      function verPapelera() {
+        enPapelera = true;
+        document.getElementById('tituloDirectorio').innerText = "🗑️ Papelera de Reciclaje";
+        document.getElementById('btnPapelera').classList.add('d-none');
+        document.getElementById('botonesHeader').classList.add('d-none'); // Oculta botones de Nuevo y CSV
+        document.getElementById('btnVolver').classList.remove('d-none');
+        document.getElementById('btnVaciarPapelera').classList.remove('d-none');
+        
+        document.getElementById('toolbarFiltros').classList.add('d-none');
+        document.getElementById('dashboardSeccion').classList.add('d-none');
+        document.getElementById('tablaCuerpo').innerHTML = "<tr><td colspan='8' class='text-center py-5'>Cargando papelera...</td></tr>";
+
+        google.script.run
+          .withSuccessHandler(res => { datosGlobales = res; renderizarTablaBaseDatos(); })
+          .obtenerDatosPapelera();
+      }
+
+      function volverInicio() {
+        enPapelera = false;
+        document.getElementById('tituloDirectorio').innerText = "Directorio de Productos";
+        document.getElementById('btnPapelera').classList.remove('d-none');
+        document.getElementById('botonesHeader').classList.remove('d-none');
+        document.getElementById('btnVolver').classList.add('d-none');
+        document.getElementById('btnVaciarPapelera').classList.add('d-none');
+        
+        document.getElementById('toolbarFiltros').classList.remove('d-none'); 
+        document.getElementById('dashboardSeccion').classList.remove('d-none');
+        cargarDatosDelServidor();
+      }
+
+      function restaurarSKU(ano, nombreSku) {
+        Swal.fire({
+          title: '¿Restaurar SKU?', text: `Regresará al año ${ano}.`, icon: 'question', showCancelButton: true, confirmButtonColor: '#28a745', cancelButtonText: 'Cancelar', confirmButtonText: 'Sí, restaurar'
+        }).then((result) => {
+          if(result.isConfirmed) {
+              google.script.run
+                .withSuccessHandler(res => { Swal.fire({ icon: 'success', text: res, timer: 1500, showConfirmButton: false }); verPapelera(); })
+                .restaurarDePapelera(nombreSku);
+          }
+        });
+      }
+
+      function confirmarVaciarPapelera() {
+         let mensaje = filtroActualAno === "TODOS" ? "TODA LA PAPELERA será eliminada permanentemente." : `La papelera del año ${filtroActualAno} será eliminada permanentemente.`;
+         Swal.fire({
+          title: '¿Vaciar Papelera?', text: mensaje + " Esto NO se puede deshacer.", icon: 'error', showCancelButton: true, confirmButtonColor: '#000000', cancelButtonColor: '#6c757d', confirmButtonText: '🔥 Destruir Registros', cancelButtonText: 'Cancelar'
+        }).then((result) => {
+          if(result.isConfirmed) {
+              google.script.run
+                .withSuccessHandler(res => { Swal.fire({ icon: 'success', text: res, timer: 2000, showConfirmButton: false }); verPapelera(); })
+                .vaciarPapelera(filtroActualAno);
+          }
+        });
+      }
+
+      // --- FUNCIONES DE DESCARGA Y RENDERIZADO ---
+      function descargarCSV() {
+        let datosParaExportar = datosGlobales;
+        if (!enPapelera && filtroActualAno !== "TODOS") { datosParaExportar = datosParaExportar.filter(f => f.ano.toString() === filtroActualAno); }
+        if (!enPapelera && filtroActualDashboard !== "TODOS") { datosParaExportar = datosParaExportar.filter(f => (f.status || '') === filtroActualDashboard); }
+        
+        if(datosParaExportar.length === 0) { Swal.fire({ icon: 'info', text: 'No hay datos para exportar en esta vista.' }); return; }
+
+        let csvContent = "Año,Nombre SKU,Nombre Real,FERT,HAWA,Status,Observaciones\n";
+        datosParaExportar.forEach(f => {
+           let obs = (f.observaciones || '').replace(/,/g, " "); 
+           let nombre = (f.nombreSku || '').replace(/,/g, " ");
+           let real = (f.nombreReal || '').replace(/,/g, " ");
+           csvContent += `${f.ano},${nombre},${real},${f.skuFert},${f.skuHawa},${f.status},${obs}\n`;
+        });
+        
+        const blob = new Blob(["\uFEFF"+csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", `Reporte_SKUs_${filtroActualAno}_${filtroActualDashboard.replace(" ","")}.csv`);
+        link.style.visibility = 'hidden'; document.body.appendChild(link); link.click(); document.body.removeChild(link);
+      }
+
+      function cargarDatosDelServidor() {
+        google.script.run
+          .withSuccessHandler(res => { datosGlobales = res; renderizarTablaBaseDatos(); })
+          .obtenerTodosLosDatos();
+      }
+
+      function actualizarDashboard(datosBase) {
+        let totales = datosBase.length; let iniciados = 0; let proceso = 0; let completos = 0; let cancelados = 0;
+        datosBase.forEach(fila => {
+            let st = (fila.status || '').toLowerCase();
+            if (st === 'iniciado') iniciados++; else if (st === 'en proceso') proceso++; else if (st === 'completo') completos++; else if (st === 'cancelado') cancelados++;
+        });
+
+        document.getElementById('countTotal').innerText = totales; document.getElementById('countIniciado').innerText = iniciados;
+        document.getElementById('countProceso').innerText = proceso; document.getElementById('countCompleto').innerText = completos;
+        document.getElementById('countCancelado').innerText = cancelados;
+      }
+
+      function filtrarPorEstatusDashboard(estatusSeleccionado) {
+        filtroActualDashboard = estatusSeleccionado;
+        const cards = ['cardTotal', 'cardIniciado', 'cardProceso', 'cardCompleto', 'cardCancelado'];
+        cards.forEach(cardId => document.getElementById(cardId).classList.remove('active-filter'));
+
+        if(estatusSeleccionado === "TODOS") document.getElementById('cardTotal').classList.add('active-filter');
+        else if(estatusSeleccionado === "Iniciado") document.getElementById('cardIniciado').classList.add('active-filter');
+        else if(estatusSeleccionado === "En Proceso") document.getElementById('cardProceso').classList.add('active-filter');
+        else if(estatusSeleccionado === "Completo") document.getElementById('cardCompleto').classList.add('active-filter');
+        else if(estatusSeleccionado === "Cancelado") document.getElementById('cardCancelado').classList.add('active-filter');
+
+        renderizarTablaBaseDatos();
+      }
+
+      function renderizarTablaBaseDatos() {
+        let datosFiltradosAno = datosGlobales;
+        if (!enPapelera && filtroActualAno !== "TODOS") { datosFiltradosAno = datosGlobales.filter(f => f.ano.toString() === filtroActualAno); }
+        if(!enPapelera) actualizarDashboard(datosFiltradosAno); 
+
+        let datosARenderizar = datosFiltradosAno;
+        if (!enPapelera && filtroActualDashboard !== "TODOS") { datosARenderizar = datosFiltradosAno.filter(f => (f.status || '') === filtroActualDashboard); }
+
+        let html = '';
+        if(datosARenderizar.length === 0) { html = "<tr><td colspan='8' class='text-center py-5 text-muted'>No hay registros.</td></tr>"; } 
+        else {
+          datosARenderizar.forEach(fila => {
+            let status = (fila.status || '').toLowerCase();
+            let classDot = 'dot-iniciado'; let classText = 'text-iniciado';
+            
+            if (status === 'completo') { classDot = 'dot-completo'; classText = 'text-completo'; } 
+            else if (status === 'en proceso') { classDot = 'dot-proceso'; classText = 'text-proceso'; }
+            else if (status === 'cancelado') { classDot = 'dot-cancelado'; classText = 'text-cancelado'; }
+            
+            let pAno = fila.ano || ''; let pSku = fila.nombreSku || ''; let pReal = fila.nombreReal || '';
+            let pFert = fila.skuFert || ''; let pHawa = fila.skuHawa || ''; let pStatus = fila.status || 'Iniciado';
+            let pObs = fila.observaciones || ''; 
+            
+            let botonAccion = '';
+            if (enPapelera) {
+              let safeRestore = `restaurarSKU('${pAno}', '${pSku.replace(/'/g,"\\'")}')`;
+              botonAccion = `<button class="btn-editar text-success" onclick="${safeRestore}">Restaurar</button>`;
+            } else {
+              let safeClick = `abrirModalEdicion('${pAno}', '${pSku.replace(/'/g,"\\'")}', '${pReal.replace(/'/g,"\\'")}', '${pFert}', '${pHawa}', '${pStatus}', '${pObs.replace(/'/g,"\\'")}')`;
+              botonAccion = `<button class="btn-editar" onclick="${safeClick}">Editar</button>`;
+            }
+
+            html += `<tr>
+              <td><span class="badge-ano">${pAno}</span></td>
+              <td style="font-weight: 500; color: #2c3e50;">${pSku || '-'}</td>
+              <td class="text-muted">${pReal || '-'}</td>
+              <td class="text-muted">${pFert || '-'}</td>
+              <td class="text-muted">${pHawa || '-'}</td>
+              <td><div class="status-container ${classText}"><span class="status-dot ${classDot}"></span> ${pStatus}</div></td>
+              <td><div class="obs-text" title="${pObs}">${pObs || '-'}</div></td>
+              <td>${botonAccion}</td>
+            </tr>`;
+          });
+        }
+        document.getElementById('tablaCuerpo').innerHTML = html;
+        filtrarTablaLocal(); 
+      }
+
+      function activarTodos() { filtroActualAno = "TODOS"; document.getElementById('btnTodos').classList.add('active'); document.getElementById('selectAno').value = ""; renderizarTablaBaseDatos(); }
+      function aplicarFiltroPorAno() { const anoSeleccionado = document.getElementById('selectAno').value; if(anoSeleccionado) { filtroActualAno = anoSeleccionado; document.getElementById('btnTodos').classList.remove('active'); renderizarTablaBaseDatos(); } }
+      function filtrarTablaLocal() {
+        let filter = document.getElementById("searchInput").value.toUpperCase();
+        let tr = document.getElementById("skuTable").getElementsByTagName("tr");
+        for (let i = 1; i < tr.length; i++) {
+          let rowData = tr[i].textContent || tr[i].innerText;
+          tr[i].style.display = (rowData.toUpperCase().indexOf(filter) > -1) ? "" : "none";
+        }
+      }
+
+      window.onload = function() { 
+        setCurrentYear(); 
+        document.getElementById('selectAno').value = ""; 
+        cargarDatosDelServidor(); 
+        modalNuevo = new bootstrap.Modal(document.getElementById('modalNuevoSku'));
+      };
+    </script>
+  </body>
+</html>
