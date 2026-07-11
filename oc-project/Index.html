@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Gestión de OC y Pagos</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background-color: #f8fafc;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+    </style>
+</head>
+
+<body class="p-4 md:p-6 text-slate-800">
+
+    <div class="max-w-[1400px] mx-auto">
+        <!-- HEADER -->
+        <header
+            class="mb-6 flex justify-between items-center bg-slate-900 text-white p-5 rounded-2xl shadow-lg shadow-slate-200">
+            <div>
+                <h1 class="text-2xl font-black tracking-tight">BI & Control de Pagos</h1>
+                <p class="text-slate-400 text-sm font-medium mt-1">Panel Operativo de Órdenes de Compra y Proveedores
+                </p>
+            </div>
+            <div
+                class="hidden md:flex items-center gap-3 text-sm bg-slate-800 px-4 py-2 rounded-xl text-slate-300 border border-slate-700">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                Año Fiscal: <span class="font-bold text-white">2026</span>
+            </div>
+        </header>
+
+        <!-- DASHBOARD KPIs -->
+        <div class="grid grid-cols-2 md:grid-cols-6 gap-4 mb-8">
+            <div
+                class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 border-l-4 border-l-blue-500 hover:shadow-md transition-shadow">
+                <p class="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-wider">Totales Activas</p>
+                <h3 class="text-2xl md:text-3xl font-black text-slate-800 mt-1" id="kpi-total">0</h3>
+            </div>
+            <div
+                class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 border-l-4 border-l-orange-400 hover:shadow-md transition-shadow">
+                <p class="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-wider">Sin OC (Pendientes)
+                </p>
+                <h3 class="text-2xl md:text-3xl font-black text-orange-500 mt-1" id="kpi-pendientes">0</h3>
+            </div>
+            <div
+                class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 border-l-4 border-l-yellow-400 hover:shadow-md transition-shadow">
+                <p class="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-wider">En Proceso</p>
+                <h3 class="text-2xl md:text-3xl font-black text-yellow-600 mt-1" id="kpi-proceso">0</h3>
+            </div>
+            <div
+                class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 border-l-4 border-l-emerald-500 hover:shadow-md transition-shadow">
+                <p class="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-wider">Finalizados</p>
+                <h3 class="text-2xl md:text-3xl font-black text-emerald-600 mt-1" id="kpi-finalizados">0</h3>
+            </div>
+            <div
+                class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 border-l-4 border-l-slate-400 hover:shadow-md transition-shadow">
+                <p class="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-wider">Canceladas</p>
+                <h3 class="text-2xl md:text-3xl font-black text-slate-500 mt-1" id="kpi-cancelados">0</h3>
+            </div>
+            <div
+                class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 border-l-4 border-l-rose-500 hover:shadow-md transition-shadow">
+                <p class="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-wider">Alertas</p>
+                <h3 class="text-2xl md:text-3xl font-black text-rose-600 mt-1" id="kpi-atrasados">0</h3>
+            </div>
+        </div>
+
+        <!-- ZONA DE TRABAJO -->
+        <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+
+            <!-- FORMULARIO DE ENTRADA -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 h-fit">
+                <h2
+                    class="text-lg font-black text-slate-800 mb-5 flex items-center gap-2 border-b border-slate-100 pb-3">
+                    <span class="bg-blue-100 p-2 rounded-lg text-blue-600">📝</span> Preparar / Registrar OC
+                </h2>
+
+                <form id="ocForm" onsubmit="handleFormSubmit(event)" class="space-y-4">
+                    <div>
+                        <label
+                            class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">Proveedor</label>
+                        <div class="flex gap-2">
+                            <select id="proveedorSelect" name="proveedor" onchange="onSupplierChange()" required
+                                class="flex-grow p-2.5 border border-slate-300 rounded-xl text-sm bg-slate-50 focus:ring-2 focus:ring-blue-500 focus:outline-none focus:border-blue-500 transition-all font-medium">
+                                <option value="">Cargando proveedores...</option>
+                            </select>
+                            <button type="button" onclick="abrirModalProveedor()"
+                                class="bg-slate-100 hover:bg-slate-200 text-slate-600 px-3.5 py-2.5 rounded-xl font-bold transition-colors border border-slate-200"
+                                title="Nuevo Proveedor">+</button>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wide">ID
+                                Proveedor</label>
+                            <input type="text" id="provId" name="id" readonly
+                                class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono text-slate-500 focus:outline-none">
+                        </div>
+                        <div>
+                            <label
+                                class="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wide">Asociado</label>
+                            <input type="text" id="provAsociado" readonly
+                                class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-500 font-medium focus:outline-none">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">Número de
+                            OC (SAP)</label>
+                        <input type="text" id="txtOC" name="oc"
+                            placeholder="Opcional (Dejar en blanco si está pendiente)"
+                            class="w-full p-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none focus:border-blue-500 transition-all font-black text-blue-700 bg-blue-50/50 placeholder:font-normal placeholder:text-slate-400">
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">Centro
+                                de Coste</label>
+                            <input type="text" id="txtCeCoste" name="ceCoste"
+                                class="w-full p-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none font-medium">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">Cuenta
+                                Mayor</label>
+                            <input type="text" id="txtCuentaMayor" name="cuentaMayor"
+                                class="w-full p-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none font-medium">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">Fecha
+                                Registro</label>
+                            <input type="date" id="txtFecha" name="fecha" required
+                                class="w-full p-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none font-medium text-slate-600">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">Pago
+                                Prog. (Opc)</label>
+                            <input type="date" id="txtPagoProg" name="pagoProgramado"
+                                class="w-full p-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none font-medium text-slate-600">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label
+                            class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">Comentarios</label>
+                        <textarea id="txtComentarios" name="comentarios" rows="2"
+                            class="w-full p-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none font-medium resize-none"></textarea>
+                    </div>
+
+                    <button type="submit" id="btnGuardar"
+                        class="w-full py-3 bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white font-bold rounded-xl shadow-md shadow-blue-500/20 text-sm transition-all duration-200 flex justify-center items-center gap-2 mt-2">
+                        <span>💾</span> Guardar en Base de Datos
+                    </button>
+                </form>
+            </div>
+
+            <!-- TABLA DE MONITOREO CON BUSCADOR GLOBAL -->
+            <div
+                class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 xl:col-span-2 flex flex-col h-[800px]">
+
+                <div class="flex flex-col md:flex-row md:items-center justify-between mb-5 gap-4">
+                    <h2 class="text-lg font-black text-slate-800 flex items-center gap-2">
+                        <span class="bg-slate-100 p-2 rounded-lg text-slate-600">📋</span> Base de Datos
+                    </h2>
+
+                    <!-- CONTROLES PROFESIONALES: Buscador + Filtro -->
+                    <div class="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+                        <!-- BUSCADOR GLOBAL -->
+                        <div class="relative w-full sm:w-64">
+                            <div
+                                class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
+                                <svg class="w-4 h-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none"
+                                    viewBox="0 0 20 20">
+                                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
+                                        stroke-width="2" d="m19 19-4-4m0-7A7 7 0 1 1 1 8a7 7 0 0 1 14 0Z" />
+                                </svg>
+                            </div>
+                            <input type="text" id="busquedaGlobal" onkeyup="aplicarFiltros()"
+                                placeholder="Buscar OC, Cliente, Fecha..."
+                                class="block w-full p-2 pl-9 text-sm text-slate-800 border border-slate-300 rounded-xl bg-slate-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-medium placeholder:font-normal">
+                        </div>
+
+                        <!-- FILTRO DE ESTATUS -->
+                        <select id="filtroEstatus" onchange="aplicarFiltros()"
+                            class="w-full sm:w-auto p-2 text-sm font-medium border border-slate-300 rounded-xl bg-slate-50 text-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer">
+                            <option value="ACTIVOS">Activos (Sin Canceladas)</option>
+                            <option value="TODOS">Ver Todo el Historial</option>
+                            <option value="EN PROCESO">🟠 En Proceso</option>
+                            <option value="PENDIENTE">🟡 Pendientes</option>
+                            <option value="FINALIZADO">🟢 Finalizados</option>
+                            <option value="CANCELADA">⚪ Canceladas</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div
+                    class="overflow-y-auto overflow-x-auto rounded-xl border border-slate-200 flex-grow bg-white custom-scrollbar">
+                    <table class="w-full text-left text-sm text-slate-600 whitespace-nowrap">
+                        <thead
+                            class="bg-slate-50 text-[10px] md:text-xs font-black uppercase text-slate-500 border-b border-slate-200 sticky top-0 z-10">
+                            <tr>
+                                <th class="p-4 tracking-wider">Orden (OC)</th>
+                                <th class="p-4 tracking-wider">Detalle del Proveedor</th>
+                                <th class="p-4 text-center tracking-wider">Estatus</th>
+                                <th class="p-4 text-center tracking-wider">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody" class="divide-y divide-slate-100">
+                            <tr>
+                                <td colspan="4" class="p-12 text-center text-slate-400 font-medium">Cargando base de
+                                    datos segura...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- (Modales: se mantienen con estructura limpia y profesional) -->
+    <!-- Modal OC Consecutiva -->
+    <div id="modalReembolso"
+        class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-2xl shadow-xl w-[450px] border border-slate-100">
+            <h3 class="text-xl font-black text-slate-800 mb-1">Generar OC Consecutiva</h3>
+            <p class="text-xs font-medium text-slate-500 mb-5 pb-3 border-b border-slate-100">Registro asociado para
+                Reembolsos / Comprobación en SAP</p>
+            <form id="formReembolso" onsubmit="guardarReembolsoSubmit(event)" class="space-y-4">
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-400 mb-1 uppercase">OC Antecesor
+                        (Padre)</label>
+                    <input type="text" id="rbOcPadre" readonly
+                        class="w-full p-2.5 border border-slate-200 rounded-xl text-sm bg-slate-50 font-black text-slate-600 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1.5">Nuevo Proveedor / Beneficiario</label>
+                    <select id="rbProveedorSelect" onchange="onRbSupplierChange()" required
+                        class="w-full p-2.5 border border-slate-300 rounded-xl text-sm bg-slate-50 font-medium"></select>
+                </div>
+                <div class="grid grid-cols-2 gap-2 hidden"><input type="text" id="rbProvId"><input type="text"
+                        id="rbAsociado"></div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1.5">Nueva OC</label>
+                    <input type="text" id="rbOcNueva" required
+                        class="w-full p-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 font-black text-purple-700 bg-purple-50">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1.5">CE Coste</label>
+                        <input type="text" id="rbCeCoste" required
+                            class="w-full p-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-purple-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1.5">Cta Mayor</label>
+                        <input type="text" id="rbCuentaMayor" required
+                            class="w-full p-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-purple-500">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1.5">Comentarios</label>
+                    <input type="text" id="rbComentarios" value="Comprobacion de gastos a terceros"
+                        class="w-full p-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-purple-500">
+                </div>
+                <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-slate-100">
+                    <button type="button" onclick="cerrarModalReembolso()"
+                        class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-bold transition-colors">Cancelar</button>
+                    <button type="submit" id="btnGuardarRb"
+                        class="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-sm font-black shadow-md shadow-purple-500/20 transition-all">Generar
+                        Vínculo</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Edición OC -->
+    <div id="modalEditar"
+        class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-2xl shadow-xl w-96 border border-slate-100">
+            <h3 class="text-xl font-black text-slate-800 mb-5">Editar / Completar Registro</h3>
+            <form id="formEditar" onsubmit="guardarEdicionSubmit(event)" class="space-y-4">
+                <input type="hidden" id="editRowNum">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1.5">Número de OC</label>
+                    <input type="text" id="editOC"
+                        class="w-full p-2.5 border border-slate-300 rounded-xl text-sm bg-blue-50 font-black text-blue-700 focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1.5">CE Coste</label>
+                        <input type="text" id="editCeCoste"
+                            class="w-full p-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1.5">Cta Mayor</label>
+                        <input type="text" id="editCuentaMayor"
+                            class="w-full p-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1.5">Comentarios</label>
+                    <textarea id="editComentarios" rows="2"
+                        class="w-full p-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 resize-none"></textarea>
+                </div>
+                <div class="flex justify-end gap-3 mt-6">
+                    <button type="button" onclick="cerrarModalEditar()"
+                        class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-bold transition-colors">Cancelar</button>
+                    <button type="submit" id="btnGuardarEdicion"
+                        class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-black shadow-md transition-all">Actualizar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Nuevo Proveedor -->
+    <div id="modalProveedor"
+        class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-2xl shadow-xl w-96 border border-slate-100">
+            <h3 class="text-xl font-black text-slate-800 mb-5">Alta de Nuevo Proveedor</h3>
+            <form id="formNuevoProveedor" onsubmit="guardarProveedorSubmit(event)" class="space-y-4">
+                <div><label class="block text-xs font-bold text-slate-700 mb-1.5">Razón Social</label><input type="text"
+                        name="nombre" required
+                        class="w-full p-2.5 border border-slate-300 rounded-xl text-sm uppercase"></div>
+                <div><label class="block text-xs font-bold text-slate-700 mb-1.5">ID (Número)</label><input type="text"
+                        name="id" required class="w-full p-2.5 border border-slate-300 rounded-xl text-sm"></div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1.5">Asociado</label>
+                    <select name="asociado" required
+                        class="w-full p-2.5 border border-slate-300 rounded-xl text-sm font-medium">
+                        <option value="Polaquimia">Polaquimia</option>
+                        <option value="Barteleu">Barteleu</option>
+                    </select>
+                </div>
+                <div class="flex justify-end gap-3 mt-6">
+                    <button type="button" onclick="cerrarModalProveedor()"
+                        class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-bold transition-colors">Cancelar</button>
+                    <button type="submit" id="btnGuardarProv"
+                        class="px-5 py-2.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-sm font-black shadow-md transition-all">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Detalles -->
+    <div id="modalDetalles"
+        class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center z-50">
+        <div class="bg-white p-7 rounded-2xl shadow-2xl w-[500px] border border-slate-100">
+            <div class="flex justify-between items-center mb-5 border-b border-slate-100 pb-3">
+                <h3 class="text-xl font-black text-slate-800">Hoja de Detalles</h3>
+                <button onclick="cerrarModalDetalles()"
+                    class="text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-full w-8 h-8 flex items-center justify-center font-bold transition-colors">&times;</button>
+            </div>
+            <div id="detallesContenido" class="space-y-4 text-sm text-slate-700"></div>
+            <div class="mt-8 flex justify-end">
+                <button onclick="cerrarModalDetalles()"
+                    class="px-6 py-2.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-sm font-bold transition-colors shadow-md">Cerrar
+                    Inspector</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== LÓGICA DE JAVASCRIPT ==================== -->
+    <script>
+        let globalSuppliers = [];
+        let globalRecords = [];
+
+        document.getElementById('txtFecha').value = new Date().toISOString().split('T')[0];
+        window.onload = function () { cargarDatosServidor(); };
+
+        function cargarDatosServidor() {
+            google.script.run.withSuccessHandler(initializeDashboard).getInitialData();
+        }
+
+        function initializeDashboard(data) {
+            globalSuppliers = data.suppliers;
+            globalRecords = data.records;
+
+            const select = document.getElementById('proveedorSelect');
+            const rbSelect = document.getElementById('rbProveedorSelect');
+
+            select.innerHTML = '<option value="">-- Seleccionar --</option>';
+            rbSelect.innerHTML = '<option value="">-- Buscar Beneficiario --</option>';
+
+            globalSuppliers.forEach(s => {
+                let opt = document.createElement('option'); opt.value = s.name; opt.textContent = s.name;
+                select.appendChild(opt);
+                let rbOpt = document.createElement('option'); rbOpt.value = s.name; rbOpt.textContent = s.name;
+                rbSelect.appendChild(rbOpt);
+            });
+
+            document.getElementById('kpi-total').textContent = data.metrics.totalOC;
+            document.getElementById('kpi-pendientes').textContent = data.metrics.pendientes;
+            document.getElementById('kpi-finalizados').textContent = data.metrics.finalizados;
+            document.getElementById('kpi-proceso').textContent = data.metrics.enProceso;
+            document.getElementById('kpi-cancelados').textContent = data.metrics.cancelados;
+            document.getElementById('kpi-atrasados').textContent = data.metrics.atrasados;
+
+            aplicarFiltros();
+        }
+
+        // ==================== NUEVO MOTOR DE BÚSQUEDA Y FILTROS ====================
+        function aplicarFiltros() {
+            const filtroEstatus = document.getElementById('filtroEstatus').value;
+            const textoBusqueda = document.getElementById('busquedaGlobal').value.toLowerCase().trim();
+
+            let filtrados = globalRecords.filter(r => {
+                // 1. Condición de Estatus
+                let pasaEstatus = false;
+                if (filtroEstatus === 'TODOS') pasaEstatus = true;
+                else if (filtroEstatus === 'ACTIVOS') pasaEstatus = (r.status !== 'CANCELADA');
+                else pasaEstatus = (r.status === filtroEstatus);
+
+                // 2. Condición de Búsqueda Global (Busca en TODOS los campos clave)
+                let pasaTexto = false;
+                if (textoBusqueda === '') {
+                    pasaTexto = true;
+                } else {
+                    // Unimos todos los datos de la fila en un solo string para buscar
+                    const datosFila = `${r.oc} ${r.proveedor} ${r.id} ${r.asociado} ${r.ceCoste} ${r.cuentaMayor} ${r.fecha} ${r.status}`.toLowerCase();
+                    pasaTexto = datosFila.includes(textoBusqueda);
+                }
+
+                return pasaEstatus && pasaTexto;
+            });
+
+            renderTable(filtrados);
+        }
+
+        // ==================== RENDERIZADO DE TABLA (UI MEJORADA) ====================
+        function renderTable(records) {
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = '';
+
+            if (records.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" class="p-12 text-center text-slate-400 font-medium bg-slate-50/50">No se encontraron resultados para tu búsqueda.</td></tr>`;
+                return;
+            }
+
+            records.forEach((row) => {
+                // Estilos de Insignias (Badges) mejorados
+                let badgeColor = "bg-slate-100 text-slate-600 border border-slate-200";
+                if (row.status === "FINALIZADO") badgeColor = "bg-emerald-100 text-emerald-700 border border-emerald-200 shadow-sm";
+                if (row.status === "EN PROCESO") badgeColor = "bg-yellow-100 text-yellow-700 border border-yellow-200 shadow-sm";
+                if (row.status === "PENDIENTE") badgeColor = "bg-orange-100 text-orange-700 border border-orange-200 shadow-sm";
+                if (row.status === "CANCELADA") badgeColor = "bg-slate-100 text-slate-400 line-through opacity-70";
+
+                // Botones de Acción
+                let editBtn = ''; let deleteBtn = ''; let pagoBtn = ''; let rbBtn = '';
+
+                if (row.status !== "FINALIZADO" && row.status !== "CANCELADA") {
+                    editBtn = `<button onclick="abrirModalEditar(${row.rowNum})" class="text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 p-1.5 rounded-lg transition-colors" title="Editar OC">✏️</button>`;
+                    deleteBtn = `<button onclick="enviarAPapelera(${row.rowNum})" class="text-slate-400 hover:text-rose-600 hover:bg-rose-50 p-1.5 rounded-lg transition-colors" title="Cancelar">🗑️</button>`;
+                }
+
+                if (row.status === "EN PROCESO") {
+                    pagoBtn = `<button onclick="marcarComoFinalizado(${row.rowNum}, this)" class="text-xs bg-emerald-500 hover:bg-emerald-600 text-white px-2.5 py-1.5 rounded-lg transition-colors shadow-sm ml-1 font-bold" title="Finalizar Pago">💰 Pagar</button>`;
+                }
+
+                if (row.status === "FINALIZADO" && (row.asociado === "Barteleu" || row.proveedor.includes("BARTELEU"))) {
+                    rbBtn = `<button onclick="abrirModalReembolso('${row.oc}', '${row.ceCoste}', '${row.cuentaMayor}')" class="text-xs bg-purple-50 text-purple-700 hover:bg-purple-600 hover:text-white px-2.5 py-1.5 rounded-lg transition-all border border-purple-200 hover:border-purple-600 ml-1 font-bold flex items-center gap-1 shadow-sm" title="Generar Consecutiva">🔗 Consecutiva</button>`;
+                }
+
+                let tr = document.createElement('tr');
+                tr.className = `hover:bg-blue-50/30 transition-colors group ${row.status === 'CANCELADA' ? 'opacity-60 bg-slate-50' : ''}`;
+
+                // Ahora mostramos Asociado y Fecha directamente debajo del Proveedor
+                tr.innerHTML = `
+          <td class="p-4 font-mono font-black ${row.oc === 'S/N' ? 'text-orange-500' : 'text-slate-700 group-hover:text-blue-700 transition-colors'}">${row.oc}</td>
+          <td class="p-4">
+            <div class="font-bold text-slate-800">${row.proveedor}</div>
+            <div class="text-[11px] text-slate-500 font-medium mt-1 flex items-center gap-2">
+              <span class="bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">ID: ${row.id}</span>
+              <span class="text-slate-300">•</span>
+              <span class="text-slate-500">${row.asociado || 'Sin Asoc.'}</span>
+              <span class="text-slate-300">•</span>
+              <span class="text-slate-400">📅 ${row.fecha}</span>
+            </div>
+          </td>
+          <td class="p-4 text-center">
+            <span class="px-3 py-1.5 text-[10px] md:text-xs rounded-lg font-black tracking-wide ${badgeColor}">${row.status}</span>
+          </td>
+          <td class="p-4">
+            <div class="flex items-center justify-center gap-1">
+              <button onclick="verDetalles(${row.rowNum})" class="text-slate-400 hover:text-blue-600 hover:bg-blue-50 p-1.5 rounded-lg transition-colors" title="Inspeccionar Detalles">🔍</button>
+              ${editBtn}
+              <button onclick="prepararRepeticion(${row.rowNum})" class="text-slate-400 hover:text-cyan-600 hover:bg-cyan-50 p-1.5 rounded-lg transition-colors" title="Duplicar Plantilla">🔁</button>
+              ${deleteBtn}
+              ${pagoBtn}
+              ${rbBtn}
+            </div>
+          </td>
+        `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // ==================== RESTO DE FUNCIONES (Sin Cambios Lógicos) ====================
+        function getRecordByRowNum(rNum) { return globalRecords.find(r => r.rowNum === rNum); }
+
+        function onSupplierChange() {
+            const selectedName = document.getElementById('proveedorSelect').value;
+            const supplier = globalSuppliers.find(s => s.name === selectedName);
+            if (supplier) {
+                document.getElementById('provId').value = supplier.id;
+                document.getElementById('provAsociado').value = supplier.asociado;
+            }
+        }
+
+        function abrirModalReembolso(ocOriginal, ceCoste, ctaMayor) {
+            document.getElementById('rbOcPadre').value = ocOriginal;
+            document.getElementById('rbCeCoste').value = ceCoste;
+            document.getElementById('rbCuentaMayor').value = ctaMayor;
+            document.getElementById('rbOcNueva').value = '';
+            document.getElementById('modalReembolso').classList.remove('hidden');
+        }
+        function cerrarModalReembolso() { document.getElementById('modalReembolso').classList.add('hidden'); }
+        function onRbSupplierChange() {
+            const name = document.getElementById('rbProveedorSelect').value;
+            const sup = globalSuppliers.find(s => s.name === name);
+            if (sup) { document.getElementById('rbProvId').value = sup.id; document.getElementById('rbAsociado').value = sup.asociado; }
+        }
+        function guardarReembolsoSubmit(e) {
+            e.preventDefault();
+            const btn = document.getElementById('btnGuardarRb'); btn.disabled = true; btn.textContent = 'Vinculando...';
+            const data = {
+                ocPadre: document.getElementById('rbOcPadre').value, proveedorNuevo: document.getElementById('rbProveedorSelect').value,
+                idNuevo: document.getElementById('rbProvId').value, asociado: document.getElementById('rbAsociado').value,
+                ocNueva: document.getElementById('rbOcNueva').value, ceCoste: document.getElementById('rbCeCoste').value,
+                cuentaMayor: document.getElementById('rbCuentaMayor').value, comentarios: document.getElementById('rbComentarios').value,
+                fecha: new Date().toISOString().split('T')[0]
+            };
+            google.script.run.withSuccessHandler(function (res) {
+                if (res.success) { cerrarModalReembolso(); alert('OC Consecutiva registrada exitosamente.'); }
+                else { alert("Error: " + res.error); }
+                btn.disabled = false; btn.textContent = 'Generar Vínculo';
+            }).guardarOCReembolso(data);
+        }
+
+        function abrirModalEditar(rowNum) {
+            const record = getRecordByRowNum(rowNum);
+            document.getElementById('editRowNum').value = record.rowNum;
+            document.getElementById('editOC').value = record.oc === 'S/N' ? '' : record.oc;
+            document.getElementById('editCeCoste').value = record.ceCoste;
+            document.getElementById('editCuentaMayor').value = record.cuentaMayor;
+            document.getElementById('editComentarios').value = record.comentarios;
+            document.getElementById('modalEditar').classList.remove('hidden');
+        }
+        function cerrarModalEditar() { document.getElementById('modalEditar').classList.add('hidden'); }
+        function guardarEdicionSubmit(e) {
+            e.preventDefault();
+            const rowNum = document.getElementById('editRowNum').value;
+            const data = {
+                oc: document.getElementById('editOC').value, ceCoste: document.getElementById('editCeCoste').value,
+                cuentaMayor: document.getElementById('editCuentaMayor').value, comentarios: document.getElementById('editComentarios').value
+            };
+            google.script.run.withSuccessHandler(function (res) { if (res.success) { cerrarModalEditar(); cargarDatosServidor(); } }).actualizarOC(rowNum, data);
+        }
+
+        function enviarAPapelera(rowNum) {
+            if (confirm("¿Enviar a la papelera?")) { google.script.run.withSuccessHandler(function (res) { if (res.success) cargarDatosServidor(); }).cambiarEstatusOC(rowNum, 'CANCELADA'); }
+        }
+
+        function prepararRepeticion(rowNum) {
+            const record = getRecordByRowNum(rowNum);
+            const select = document.getElementById('proveedorSelect');
+            select.value = record.proveedor; onSupplierChange();
+            document.getElementById('txtCeCoste').value = record.ceCoste;
+            document.getElementById('txtCuentaMayor').value = record.cuentaMayor;
+            document.getElementById('txtComentarios').value = record.comentarios;
+            const ocInput = document.getElementById('txtOC'); ocInput.value = ''; ocInput.focus();
+        }
+
+        function verDetalles(rowNum) {
+            const record = getRecordByRowNum(rowNum);
+            const div = document.getElementById('detallesContenido');
+            div.innerHTML = `
+        <div class="grid grid-cols-2 gap-5 bg-slate-50 p-5 rounded-xl border border-slate-200">
+          <div><span class="block text-[10px] uppercase font-bold text-slate-400 tracking-wide mb-1">Orden de Compra</span><span class="font-mono font-black text-lg text-slate-800">${record.oc}</span></div>
+          <div><span class="block text-[10px] uppercase font-bold text-slate-400 tracking-wide mb-1">Estatus</span><span class="font-bold text-slate-800">${record.status}</span></div>
+          <div class="col-span-2"><span class="block text-[10px] uppercase font-bold text-slate-400 tracking-wide mb-1">Proveedor / Beneficiario</span><span class="font-bold text-slate-800 text-base">${record.proveedor} <span class="text-slate-400 font-mono text-sm ml-2">ID: ${record.id}</span></span></div>
+          <div><span class="block text-[10px] uppercase font-bold text-slate-400 tracking-wide mb-1">Centro Coste</span><span class="font-medium text-slate-700">${record.ceCoste}</span></div>
+          <div><span class="block text-[10px] uppercase font-bold text-slate-400 tracking-wide mb-1">Cuenta Mayor</span><span class="font-medium text-slate-700">${record.cuentaMayor}</span></div>
+          <div class="col-span-2"><span class="block text-[10px] uppercase font-bold text-slate-400 tracking-wide mb-1">Comentarios y Anotaciones</span><p class="bg-white p-3 rounded-lg border border-slate-200 text-slate-600">${record.comentarios || 'Sin comentarios registrados.'}</p></div>
+        </div>
+      `;
+            document.getElementById('modalDetalles').classList.remove('hidden');
+        }
+        function cerrarModalDetalles() { document.getElementById('modalDetalles').classList.add('hidden'); }
+
+        function abrirModalProveedor() { document.getElementById('modalProveedor').classList.remove('hidden'); }
+        function cerrarModalProveedor() { document.getElementById('modalProveedor').classList.add('hidden'); }
+        function guardarProveedorSubmit(e) {
+            e.preventDefault(); const form = document.getElementById('formNuevoProveedor');
+            const data = { nombre: form.nombre.value, id: form.id.value, asociado: form.asociado.value };
+            google.script.run.withSuccessHandler(function (res) { if (res.success) { form.reset(); cerrarModalProveedor(); cargarDatosServidor(); } }).guardarNuevoProveedor(data);
+        }
+
+        function handleFormSubmit(e) {
+            e.preventDefault(); const btn = document.getElementById('btnGuardar'); btn.disabled = true;
+            const form = document.getElementById('ocForm');
+            const formData = {
+                id: form.id.value, proveedor: form.proveedor.value, oc: form.oc.value, ceCoste: form.ceCoste.value,
+                cuentaMayor: form.cuentaMayor.value, comentarios: form.comentarios.value, fecha: form.fecha.value, pagoProgramado: form.pagoProgramado.value
+            };
+            google.script.run.withSuccessHandler(function (res) {
+                if (res.success) { form.reset(); document.getElementById('txtFecha').value = new Date().toISOString().split('T')[0]; cargarDatosServidor(); }
+                btn.disabled = false;
+            }).guardarNuevaOC(formData);
+        }
+
+        function marcarComoFinalizado(rowNum, element) {
+            element.disabled = true; element.textContent = 'Procesando...';
+            google.script.run.withSuccessHandler(function (res) { if (res.success) { cargarDatosServidor(); } }).cambiarEstatusOC(rowNum, 'FINALIZADO');
+        }
+    </script>
+</body>
+
+</html>
