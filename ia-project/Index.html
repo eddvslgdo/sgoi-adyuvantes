@@ -1,0 +1,528 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <title>AgroSystem Coadyuvantes Suite</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+      body {
+        font-family: "Inter", sans-serif;
+        background-color: #f8fafc;
+      }
+      .custom-shadow {
+        box-shadow:
+          0 10px 30px -5px rgba(0, 0, 0, 0.05),
+          0 4px 12px -2px rgba(0, 0, 0, 0.03);
+      }
+      .level-btn {
+        border: 1px solid #e2e8f0;
+        background: white;
+        cursor: pointer;
+        transition: all 0.15s ease;
+      }
+      .level-btn:hover {
+        background: #f1f5f9;
+      }
+      .level-btn.active {
+        background: #4f46e5;
+        color: white;
+        border-color: #4f46e5;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+  <body class="p-4 md:p-8 text-slate-800">
+    <!-- BANNER DE ALERTA CORPORATIVO (REEMPLAZA A ALERTS NATIVOS) -->
+
+    <div
+      id="toast-error"
+      class="hidden fixed bottom-6 right-6 z-50 w-85 bg-slate-950 text-white p-4 rounded-xl shadow-xl border border-slate-800 transition-all duration-300 flex flex-col gap-3"
+    >
+      <div class="flex items-start gap-3">
+        <div
+          class="flex items-center justify-center w-8 h-8 rounded-lg bg-amber-500/10 text-amber-400 text-sm shrink-0"
+        >
+          ⚠️
+        </div>
+        <div class="flex-1 min-w-0">
+          <h4
+            class="text-xs font-bold uppercase tracking-wider text-slate-200 font-sans"
+          >
+            Control de Flujo de IA
+          </h4>
+          <p
+            id="toast-msg"
+            class="text-xs mt-0.5 text-slate-400 font-medium leading-snug"
+          ></p>
+        </div>
+        <button
+          onclick="cerrarAlerta()"
+          class="text-slate-500 hover:text-slate-300 text-xs p-1 cursor-pointer"
+        >
+          ✕
+        </button>
+      </div>
+      <button
+        id="btn-reintentar-toast"
+        onclick="reintentarFormulacion()"
+        class="hidden w-full bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold py-2 px-3 rounded-lg transition-colors cursor-pointer text-center"
+      >
+        Espere (15s)
+      </button>
+    </div>
+
+    <div class="max-w-7xl mx-auto">
+      <!-- ENCABEZADO -->
+      <header
+        class="flex flex-col md:flex-row md:items-center md:justify-between border-b border-slate-200 pb-5 mb-8"
+      >
+        <div>
+          <h1
+            class="text-2xl font-bold text-slate-950 flex items-center gap-2 tracking-tight"
+          >
+            <span class="text-indigo-600">💧</span> AgroSystem Coadyuvantes
+            <span
+              class="text-xs font-bold bg-indigo-600 text-white px-2.5 py-0.5 rounded-full tracking-wider"
+              >Modular Designer</span
+            >
+          </h1>
+          <p class="text-xs text-slate-500 mt-1">
+            Diseño Predictivo Basado en Adición de Propiedades Singulares
+          </p>
+        </div>
+      </header>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <!-- MATRIZ DE CONFIGURACIÓN -->
+        <aside
+          class="lg:col-span-5 bg-white p-6 rounded-2xl border border-slate-200/80 custom-shadow space-y-5 h-fit"
+        >
+          <h2
+            class="text-sm font-bold text-slate-900 uppercase tracking-wider pb-2 border-b border-slate-100"
+          >
+            🎯 Parámetros de Simulación
+          </h2>
+
+          <div class="space-y-3">
+            <div>
+              <label
+                class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1"
+                >Cultivos Objetivo</label
+              >
+              <select
+                id="cultivos"
+                class="w-full text-sm border border-slate-200 rounded-xl p-3 text-slate-800 focus:border-indigo-600 focus:outline-none bg-slate-50/50"
+              >
+                <option
+                  value="Hortalizas y Cruciferas de Hoja Altamente Cerosa"
+                >
+                  Cruciferas y Hortalizas (Cera Alta)
+                </option>
+                <option value="Granos y Extensivos (Maíz, Soya, Trigo)">
+                  Granos y Extensivos
+                </option>
+                <option value="Frutales y Cítricos de Cutícula Rígida">
+                  Frutales y Cítricos
+                </option>
+              </select>
+            </div>
+
+            <div>
+              <label
+                class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1"
+                >Plaguicidas Acompañantes</label
+              >
+              <select
+                id="plaguicidas"
+                class="w-full text-sm border border-slate-200 rounded-xl p-3 text-slate-800 focus:border-indigo-600 focus:outline-none bg-slate-50/50"
+              >
+                <option value="Herbicidas Sistémicos">
+                  Herbicidas Sistémicos
+                </option>
+                <option value="Herbicidas de Contacto">
+                  Herbicidas de Contacto
+                </option>
+                <option value="Insecticidas y Fungicidas Lipofílicos">
+                  Insecticidas y Fungicidas Lipofílicos
+                </option>
+              </select>
+            </div>
+
+            <div>
+              <label
+                class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1"
+                >Certificación Ecológica</label
+              >
+              <select
+                id="organico"
+                class="w-full text-sm border border-slate-200 rounded-xl p-3 text-slate-800 focus:border-indigo-600 focus:outline-none bg-slate-50/50"
+              >
+                <option value="Estándar Químico Industrial">
+                  Estándar Industrial (Sin restricciones)
+                </option>
+                <option value="Orgánico Certificable (OMRI Listable)">
+                  Orgánico Certificable (OMRI)
+                </option>
+                <option
+                  value="Eco-Sustentable (Libre de Nonilfenoles Etoxilados)"
+                >
+                  Libre de Nonilfenoles (NPE Free)
+                </option>
+              </select>
+            </div>
+          </div>
+
+          <!-- REQUERIMIENTOS POR SEPARADO (ESTILO MODAL EXPERTO) -->
+          <div class="border-t border-slate-100 pt-4 space-y-3">
+            <label
+              class="block text-xs font-bold text-slate-500 uppercase tracking-wider"
+              >2. Niveles Mínimos Requeridos</label
+            >
+
+            <div class="flex gap-2">
+              <select
+                id="selector-propiedad"
+                class="flex-1 text-sm border border-slate-200 rounded-xl p-2.5 bg-white text-slate-700 focus:border-indigo-600 focus:outline-none"
+              >
+                <option value="">Selecciona una propiedad...</option>
+                <option value="PENETRACIÓN">PENETRACIÓN</option>
+                <option value="DISPERSIÓN / HUMECTACIÓN">
+                  DISPERSIÓN / HUMECTACIÓN
+                </option>
+                <option value="ADHERENCIA">ADHERENCIA</option>
+                <option value="ANTIDERIVA">ANTIDERIVA</option>
+                <option value="ANTIEVAPORANTE">ANTIEVAPORANTE</option>
+                <option value="ENCAPSULANTE">ENCAPSULANTE</option>
+                <option value="BUFFERIZANTE (REGULADOR PH)">
+                  BUFFERIZANTE (REGULADOR PH)
+                </option>
+                <option value="ACIDIFICANTE">ACIDIFICANTE</option>
+                <option value="ANTIESPUMANTE">ANTIESPUMANTE</option>
+                <option value="COMPATIBILIZANTE">COMPATIBILIZANTE</option>
+                <option value="ACONDICIONADOR DE AGUA">
+                  ACONDICIONADOR DE AGUA
+                </option>
+              </select>
+              <button
+                type="button"
+                onclick="agregarPropiedadFila()"
+                class="bg-indigo-50 border border-indigo-200 text-indigo-700 font-bold text-xs px-4 rounded-xl hover:bg-indigo-100 transition-colors cursor-pointer"
+              >
+                + Añadir
+              </button>
+            </div>
+
+            <!-- LISTA DINÁMICA DE ELEMENTOS AGREGADOS -->
+            <div id="lista-funcionalidades" class="space-y-2 pt-2">
+              <!-- Las filas agregadas se pintarán aquí con su rating 1-4 -->
+            </div>
+          </div>
+
+          <button
+            id="btnAgro"
+            onclick="ejecutarDiseno()"
+            class="w-full bg-slate-950 hover:bg-slate-800 text-white font-semibold text-sm py-3.5 px-4 rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
+          >
+            🧪 Formular Coadyuvante Modular
+          </button>
+        </aside>
+
+        <!-- RESULTADOS -->
+        <main class="lg:col-span-7 space-y-6">
+          <div
+            id="loading-agro"
+            class="hidden bg-white border border-slate-200 rounded-2xl p-16 text-center custom-shadow"
+          >
+            <div
+              class="w-10 h-10 border-4 border-slate-100 border-t-indigo-600 rounded-full animate-spin mx-auto mb-4"
+            ></div>
+            <h3 class="text-sm font-semibold text-slate-800">
+              Analizando Balance Fisicoquímico Modular...
+            </h3>
+          </div>
+
+          <div
+            id="estado-vacio"
+            class="bg-white border border-slate-200 rounded-2xl p-20 text-center custom-shadow"
+          >
+            <div class="text-3xl text-slate-300 mb-2">💧</div>
+            <h3 class="text-sm font-bold text-slate-700">
+              Especificador de Aditivos
+            </h3>
+            <p class="text-xs text-slate-400 mt-1">
+              Añada las propiedades específicas necesarias para desplegar la
+              respuesta sintética.
+            </p>
+          </div>
+
+          <div id="dashboard-resultados" class="hidden space-y-6">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div
+                class="bg-white border border-slate-200 p-4 rounded-2xl shadow-sm"
+              >
+                <span
+                  class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block"
+                  >Complejidad</span
+                >
+                <div
+                  id="kpi-dif"
+                  class="text-base font-bold text-slate-900 mt-1"
+                >
+                  —
+                </div>
+              </div>
+              <div
+                class="bg-white border border-slate-200 p-4 rounded-2xl shadow-sm"
+              >
+                <span
+                  class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block"
+                  >Estabilidad</span
+                >
+                <div
+                  id="kpi-est"
+                  class="text-base font-bold text-slate-900 mt-1"
+                >
+                  —
+                </div>
+              </div>
+              <div
+                class="bg-white border border-slate-200 p-4 rounded-2xl shadow-sm"
+              >
+                <span
+                  class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block"
+                  >Costo MP</span
+                >
+                <div
+                  id="kpi-cost"
+                  class="text-base font-bold text-slate-900 mt-1"
+                >
+                  —
+                </div>
+              </div>
+            </div>
+
+            <div
+              class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm"
+            >
+              <h3
+                class="text-xs font-bold text-slate-900 uppercase tracking-wider mb-2"
+              >
+                🔬 Dictamen Analítico
+              </h3>
+              <div
+                id="eval-texto"
+                class="text-xs text-slate-600 leading-relaxed bg-slate-50 p-4 rounded-xl border border-slate-100"
+              ></div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+              <div
+                class="md:col-span-5 bg-white border border-slate-200 p-4 rounded-2xl shadow-sm flex flex-col items-center justify-center"
+              >
+                <div class="w-full max-w-[150px] h-[150px]">
+                  <canvas id="graficoComposicion"></canvas>
+                </div>
+              </div>
+              <div
+                class="md:col-span-7 bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden"
+              >
+                <table class="w-full text-left text-xs border-collapse">
+                  <thead
+                    class="bg-slate-50 text-slate-400 font-bold border-b border-slate-100 text-[9px] uppercase tracking-wider"
+                  >
+                    <tr>
+                      <th class="p-3">Materia Prima</th>
+                      <th class="p-3">Función</th>
+                      <th class="p-3 text-right">Masa %</th>
+                    </tr>
+                  </thead>
+                  <tbody
+                    id="tabla-cuerpo"
+                    class="divide-y divide-slate-100 text-slate-700"
+                  ></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+
+<script>
+    let miGrafico = null;
+    let datosUltimoIntento = null;
+
+    // 1. FUNCIÓN PARA AÑADIR PROPIEDADES INDEPENDIENTES
+    function agregarPropiedadFila() {
+      const selector = document.getElementById('selector-propiedad');
+      const propiedad = selector.value;
+      if (!propiedad) return;
+
+      // Evita duplicados en la lista modular
+      if (document.getElementById(`fila-${propiedad}`)) return;
+
+      const contenedor = document.getElementById('lista-funcionalidades');
+      const filaHtml = `
+        <div id="fila-${propiedad}" class="flex items-center justify-between bg-slate-50 p-2 rounded-xl border border-slate-200/60" data-propiedad="${propiedad}">
+          <span class="text-xs font-semibold text-slate-700 flex items-center gap-1.5">🧪 ${propiedad}</span>
+          <div class="flex items-center gap-2">
+            <div class="flex gap-0.5">
+              <button type="button" onclick="marcarRating(this, 1)" class="level-btn w-6 h-6 text-[10px] rounded-md active">1</button>
+              <button type="button" onclick="marcarRating(this, 2)" class="level-btn w-6 h-6 text-[10px] rounded-md">2</button>
+              <button type="button" onclick="marcarRating(this, 3)" class="level-btn w-6 h-6 text-[10px] rounded-md">3</button>
+              <button type="button" onclick="marcarRating(this, 4)" class="level-btn w-6 h-6 text-[10px] rounded-md">4</button>
+            </div>
+            <button type="button" onclick="document.getElementById('fila-${propiedad}').remove()" class="text-slate-400 hover:text-rose-600 font-bold px-1 text-xs cursor-pointer">✕</button>
+          </div>
+        </div>`;
+      
+      contenedor.insertAdjacentHTML('beforeend', filaHtml);
+      selector.value = ""; // Limpia el dropdown
+    }
+
+    // 2. FUNCIÓN PARA SELECCIONAR POTENCIA (1 AL 4)
+    function marcarRating(btn, num) {
+      const parent = btn.parentElement;
+      parent.querySelectorAll('.level-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    }
+
+    // 3. CONTROL DE ALERTAS PREMIUM
+    function mostrarAlerta(msg) {
+      let mensajeAmigable = msg;
+      let esCuota = false;
+
+      if (msg.includes("429") || msg.includes("RESOURCE_EXHAUSTED")) {
+        esCuota = true;
+        mensajeAmigable = "Límite de consultas excedido. El motor de IA se está restableciendo.";
+      } else if (msg.includes("503") || msg.includes("UNAVAILABLE")) {
+        mensajeAmigable = "Servidores saturados temporamente. Reintente en unos instantes.";
+      } else {
+        mensajeAmigable = msg.split("{")[0].replace("Error: Error", "Error").trim();
+      }
+
+      document.getElementById('toast-msg').innerText = mensajeAmigable;
+      
+      const btnReintento = document.getElementById('btn-reintentar-toast');
+      if (esCuota && btnReintento) {
+        btnReintento.classList.remove('hidden');
+        let segundos = 15;
+        btnReintento.disabled = true;
+        const intervalo = setInterval(() => {
+          segundos--;
+          if (segundos <= 0) {
+            clearInterval(intervalo);
+            btnReintento.innerText = "🔄 Reintentar Ahora";
+            btnReintento.disabled = false;
+            btnReintento.classList.remove('opacity-50');
+          } else {
+            btnReintento.innerText = `Espere (${segundos}s)`;
+            btnReintento.classList.add('opacity-50');
+          }
+        }, 1000);
+      } else if (btnReintento) {
+        btnReintento.classList.add('hidden');
+      }
+
+      document.getElementById('toast-error').classList.remove('hidden');
+    }
+
+    function reintentarFormulacion() {
+      if (datosUltimoIntento) {
+        document.getElementById('toast-error').classList.add('hidden');
+        ejecutarDisenoConDatos(datosUltimoIntento);
+      }
+    }
+
+    function cerrarAlerta() {
+      document.getElementById('toast-error').classList.add('hidden');
+    }
+
+    // 4. RECOLECTOR DE DATOS DE LA INTERFAZ
+    function ejecutarDiseno() {
+      const filas = document.querySelectorAll('#lista-funcionalidades > div');
+      if (filas.length === 0) {
+        mostrarAlerta("Debe agregar al menos una funcionalidad técnica por separado antes de enviar el diseño.");
+        return;
+      }
+
+      const matriz = [];
+      filas.forEach(f => {
+        const prop = f.getAttribute('data-propiedad');
+        const nivel = f.querySelector('.level-btn.active').innerText;
+        matriz.push({ funcionalidad: prop, potencia_deseada: nivel + "/4" });
+      });
+
+      datosUltimoIntento = {
+        cultivos: document.getElementById('cultivos').value,
+        plaguicidas: document.getElementById('plaguicidas').value,
+        organico: document.getElementById('organico').value,
+        matriz: matriz
+      };
+
+      ejecutarDisenoConDatos(datosUltimoIntento);
+    }
+
+    // 5. ENVÍO DE DATOS HACIA EL BACKEND DE GOOGLE
+    function ejecutarDisenoConDatos(datos) {
+      const btn = document.getElementById('btnAgro');
+      btn.innerText = "Calculando Sistema..."; btn.disabled = true;
+      
+      document.getElementById('loading-agro').classList.remove('hidden');
+      document.getElementById('estado-vacio').classList.add('hidden');
+      document.getElementById('dashboard-resultados').classList.add('hidden');
+
+      google.script.run
+        .withSuccessHandler(res => {
+          btn.innerText = "🧪 Formular Coadyuvante Modular"; btn.disabled = false;
+          document.getElementById('loading-agro').classList.add('hidden');
+          
+          if(res.success) {
+            const data = res.datosFormulacion;
+            document.getElementById('kpi-dif').innerText = data.dificultad;
+            document.getElementById('kpi-est').innerText = data.estabilidad_estimada;
+            document.getElementById('kpi-cost').innerText = data.costo_relativo;
+            document.getElementById('eval-texto').innerText = data.evaluacion_tecnica;
+            
+            let cuerpoHtml = "";
+            let labels = [];
+            let valores = [];
+
+            data.componentes.forEach(c => {
+              labels.push(c.nombre);
+              valores.push(parseInt(c.porcentaje) || 10);
+              cuerpoHtml += `<tr><td class="p-3 font-semibold text-slate-900">${c.nombre}</td><td class="p-3 text-slate-500 font-normal">${c.funcion}</td><td class="p-3 text-right font-bold font-mono bg-slate-50 px-2 py-0.5 rounded">${c.porcentaje}</td></tr>`;
+            });
+            document.getElementById('tabla-cuerpo').innerHTML = cuerpoHtml;
+            
+            const ctx = document.getElementById('graficoComposicion').getContext('2d');
+            if (miGrafico) miGrafico.destroy();
+            miGrafico = new Chart(ctx, {
+              type: 'doughnut',
+              data: { labels: labels, datasets: [{ data: valores, backgroundColor: ['#4f46e5', '#10b981', '#f59e0b', '#6366f1', '#94a3b8'] }] },
+              options: { plugins: { legend: { display: false } }, responsive: true, maintainAspectRatio: false }
+            });
+
+            document.getElementById('dashboard-resultados').classList.remove('hidden');
+          } else {
+            document.getElementById('estado-vacio').classList.remove('hidden');
+            mostrarAlerta(res.error);
+          }
+        })
+        .withFailureHandler(err => {
+          btn.innerText = "🧪 Formular Coadyuvante Modular"; btn.disabled = false;
+          document.getElementById('loading-agro').classList.add('hidden');
+          document.getElementById('estado-vacio').classList.remove('hidden');
+          mostrarAlerta("Fallo de comunicación: " + err.message);
+        })
+        .diseñarCoadyuvanteIA(datos);
+    }
+</script>
+
+  </body>
+</html>
