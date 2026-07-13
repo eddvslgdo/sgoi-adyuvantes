@@ -5,90 +5,90 @@ let FILTRO_BAJO_STOCK = false;
 let FILTRO_PROX_CADUCAR = false;
 
 function cargarDashboardProductos() {
-  const contenedor = document.getElementById("contenedor-productos-lista");
-  if (!contenedor) return;
+    const contenedor = document.getElementById("contenedor-productos-lista");
+    if (!contenedor) return;
 
-  contenedor.classList.add("list-scroll-container");
-  contenedor.innerHTML = `
+    contenedor.classList.add("list-scroll-container");
+    contenedor.innerHTML = `
     <div class="loader-container" style="padding: 60px 0;">
         <div class="modern-spinner"></div>
     </div>`;
 
-  google.script.run
-    .withSuccessHandler((p) => {
-      PRODUCTOS_CACHE = p; 
-      renderizarTablaProductos(p);
-    })
-    .withFailureHandler((e) => {
-      console.error(e);
-      if(contenedor) contenedor.innerHTML = '<div style="text-align:center; color:#dc2626; padding:40px; background:white; border-radius:8px; border:1px solid #fecaca;">❌ Error al cargar datos.</div>';
-    })
-    .obtenerDatosProductos();
+    google.script.run
+        .withSuccessHandler((p) => {
+            PRODUCTOS_CACHE = p;
+            renderizarTablaProductos(p);
+        })
+        .withFailureHandler((e) => {
+            console.error(e);
+            if (contenedor) contenedor.innerHTML = '<div style="text-align:center; color:#dc2626; padding:40px; background:white; border-radius:8px; border:1px solid #fecaca;">❌ Error al cargar datos.</div>';
+        })
+        .obtenerDatosProductos();
 }
 
 function parseFechaCaducidad(str) {
-    if(!str || typeof str !== 'string' || str === "---" || str.includes("SIN-FECHA")) return null;
+    if (!str || typeof str !== 'string' || str === "---" || str.includes("SIN-FECHA")) return null;
     try {
         let partes = str.split('/');
-        if(partes.length === 3) return new Date(partes[2], partes[1]-1, partes[0]);
-        if(str.includes('-')) {
+        if (partes.length === 3) return new Date(partes[2], partes[1] - 1, partes[0]);
+        if (str.includes('-')) {
             let p2 = str.split('-');
-            if(p2.length === 3 && p2[0].length === 4) return new Date(p2[0], p2[1]-1, p2[2]); 
+            if (p2.length === 3 && p2[0].length === 4) return new Date(p2[0], p2[1] - 1, p2[2]);
         }
-    } catch(e) { return null; }
+    } catch (e) { return null; }
     return null;
 }
 
 function renderizarTablaProductos(productos) {
-  const contenedor = document.getElementById("contenedor-productos-lista");
-  if (!contenedor) return;
-  contenedor.innerHTML = "";
+    const contenedor = document.getElementById("contenedor-productos-lista");
+    if (!contenedor) return;
+    contenedor.innerHTML = "";
 
-  const activos = productos.filter((p) => p.totalVolumen > 0.001);
+    const activos = productos.filter((p) => p.totalVolumen > 0.001);
 
-  if (activos.length === 0) {
-    contenedor.innerHTML = `
+    if (activos.length === 0) {
+        contenedor.innerHTML = `
       <div style="text-align:center; padding:60px; color:#64748b; background:white; border-radius:12px; border:1px solid #e2e8f0;">
         <div style="font-size:2.5rem; margin-bottom:15px; opacity:0.5;">📦</div>
         <div style="font-weight:600; font-size:1.1rem;">Inventario Vacío</div>
       </div>`;
-    return;
-  }
+        return;
+    }
 
-  const hoy = new Date();
-  hoy.setHours(0,0,0,0);
-  const limiteTresMeses = new Date();
-  limiteTresMeses.setMonth(hoy.getMonth() + 3);
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    const limiteTresMeses = new Date();
+    limiteTresMeses.setMonth(hoy.getMonth() + 3);
 
-  const grupos = {
-      'L': { titulo: 'VOLUMEN (LÍQUIDOS)', icon: '💧', color: '#0284c7', bg: '#f0f9ff', total: 0, items: [] },
-      'Kg': { titulo: 'MASA (SÓLIDOS)', icon: '⚖️', color: '#d97706', bg: '#fffbeb', total: 0, items: [] },
-      'Pza': { titulo: 'PIEZAS (INDIVISIBLES)', icon: '📦', color: '#7e22ce', bg: '#faf5ff', total: 0, items: [] }
-  };
+    const grupos = {
+        'L': { titulo: 'VOLUMEN (LÍQUIDOS)', icon: '💧', color: '#0284c7', bg: '#f0f9ff', total: 0, items: [] },
+        'Kg': { titulo: 'MASA (SÓLIDOS)', icon: '⚖️', color: '#d97706', bg: '#fffbeb', total: 0, items: [] },
+        'Pza': { titulo: 'PIEZAS (INDIVISIBLES)', icon: '📦', color: '#7e22ce', bg: '#faf5ff', total: 0, items: [] }
+    };
 
-  activos.forEach(p => {
-      let u = p.unidad || 'L';
-      if (!grupos[u]) u = 'L'; 
-      grupos[u].items.push(p);
-      grupos[u].total += p.totalVolumen;
-  });
+    activos.forEach(p => {
+        let u = p.unidad || 'L';
+        if (!grupos[u]) u = 'L';
+        grupos[u].items.push(p);
+        grupos[u].total += p.totalVolumen;
+    });
 
-  ['L', 'Kg', 'Pza'].forEach(key => {
-      const grupo = grupos[key];
-      if (grupo.items.length === 0) return;
+    ['L', 'Kg', 'Pza'].forEach(key => {
+        const grupo = grupos[key];
+        if (grupo.items.length === 0) return;
 
-      let displayTotalGrupo = (key === 'Pza') ? Math.round(grupo.total) : grupo.total.toFixed(2);
-      const groupId = `grupo-content-${key}`;
+        let displayTotalGrupo = (key === 'Pza') ? Math.round(grupo.total) : grupo.total.toFixed(2);
+        const groupId = `grupo-content-${key}`;
 
-      const groupWrapper = document.createElement("div");
-      groupWrapper.className = "inventory-group";
+        const groupWrapper = document.createElement("div");
+        groupWrapper.className = "inventory-group";
 
-      const headerGrupo = document.createElement("div");
-      headerGrupo.className = "group-accordion-header";
-      headerGrupo.style.borderLeftColor = grupo.color;
-      headerGrupo.style.backgroundColor = grupo.bg;
-      headerGrupo.onclick = () => toggleGrupo(groupId);
-      headerGrupo.innerHTML = `
+        const headerGrupo = document.createElement("div");
+        headerGrupo.className = "group-accordion-header";
+        headerGrupo.style.borderLeftColor = grupo.color;
+        headerGrupo.style.backgroundColor = grupo.bg;
+        headerGrupo.onclick = () => toggleGrupo(groupId);
+        headerGrupo.innerHTML = `
         <div class="group-title-area">
             <span id="icon-${groupId}" class="group-chevron">▶</span>
             <span style="color:${grupo.color}; font-weight:700; font-size:0.9rem; letter-spacing:0.5px;">${grupo.icon} ${grupo.titulo}</span>
@@ -97,47 +97,47 @@ function renderizarTablaProductos(productos) {
             Total: <strong>${displayTotalGrupo} ${key}</strong>
         </div>`;
 
-      const contentGrupo = document.createElement("div");
-      contentGrupo.id = groupId;
-      contentGrupo.className = "group-accordion-content";
-      contentGrupo.style.display = "none";
+        const contentGrupo = document.createElement("div");
+        contentGrupo.id = groupId;
+        contentGrupo.className = "group-accordion-content";
+        contentGrupo.style.display = "none";
 
-      grupo.items.sort((a,b) => a.nombre.localeCompare(b.nombre)).forEach(p => {
-          
-          let colorIndicador = "#f59e0b"; 
-          if (p.totalVolumen >= 10) colorIndicador = "#3b82f6"; 
-          if (p.totalVolumen > 100) colorIndicador = "#10b981"; 
+        grupo.items.sort((a, b) => a.nombre.localeCompare(b.nombre)).forEach(p => {
 
-          let filasDetalle = "";
-          let productoExpiraPronto = false; 
+            let colorIndicador = "#f59e0b";
+            if (p.totalVolumen >= 10) colorIndicador = "#3b82f6";
+            if (p.totalVolumen > 100) colorIndicador = "#10b981";
 
-          p.lotes.forEach((l, idxLote) => {
-              let aliasTag = (l.alias && l.alias.trim() !== "") ? `<span class="alias-tag">Variante: ${l.alias}</span>` : "";
-              
-              let fCad = parseFechaCaducidad(l.caducidad);
-              let cadAlertaHtml = l.caducidad || "--";
-              let rowBg = "";
+            let filasDetalle = "";
+            let productoExpiraPronto = false;
 
-              if (fCad) {
-                  let fCadTime = fCad.getTime();
-                  let hoyTime = hoy.getTime();
-                  let limiteTime = limiteTresMeses.getTime();
+            p.lotes.forEach((l, idxLote) => {
+                let aliasTag = (l.alias && l.alias.trim() !== "") ? `<span class="alias-tag">Variante: ${l.alias}</span>` : "";
 
-                  if (hoyTime > fCadTime) { 
-                      cadAlertaHtml = `<span style="color:#dc2626; font-weight:bold;">${l.caducidad} (Vencido)</span>`;
-                      rowBg = "background:#fef2f2;";
-                      productoExpiraPronto = true;
-                  } else if (limiteTime >= fCadTime) { 
-                      cadAlertaHtml = `<span style="color:#ea580c; font-weight:bold;">${l.caducidad} (Próximo)</span>`;
-                      rowBg = "background:#fffbeb;";
-                      productoExpiraPronto = true;
-                  }
-              }
+                let fCad = parseFechaCaducidad(l.caducidad);
+                let cadAlertaHtml = l.caducidad || "--";
+                let rowBg = "";
 
-              // ID único para identificar el contenedor de acciones de esta fila específica
-              let idContenedorAcciones = `acciones-lote-${p.id}-${idxLote}`;
+                if (fCad) {
+                    let fCadTime = fCad.getTime();
+                    let hoyTime = hoy.getTime();
+                    let limiteTime = limiteTresMeses.getTime();
 
-              filasDetalle += `
+                    if (hoyTime > fCadTime) {
+                        cadAlertaHtml = `<span style="color:#dc2626; font-weight:bold;">${l.caducidad} (Vencido)</span>`;
+                        rowBg = "background:#fef2f2;";
+                        productoExpiraPronto = true;
+                    } else if (limiteTime >= fCadTime) {
+                        cadAlertaHtml = `<span style="color:#ea580c; font-weight:bold;">${l.caducidad} (Próximo)</span>`;
+                        rowBg = "background:#fffbeb;";
+                        productoExpiraPronto = true;
+                    }
+                }
+
+                // ID único para identificar el contenedor de acciones de esta fila específica
+                let idContenedorAcciones = `acciones-lote-${p.id}-${idxLote}`;
+
+                filasDetalle += `
                   <tr style="${rowBg}">
                       <td class="td-ubic" style="vertical-align: middle; padding: 12px 15px;">${l.ubicacion}</td>
                       <td style="vertical-align: middle; padding: 12px 15px;"><div class="td-pres">${l.presentacion}</div>${aliasTag}</td>
@@ -152,23 +152,23 @@ function renderizarTablaProductos(productos) {
                   </tr>
               `;
 
-              // Almacenamos temporalmente los metadatos del lote para inyectar sus eventos de forma pura al final
-              l.idContenedor = idContenedorAcciones;
-              l.unidadFila = p.unidad || 'L';
-          });
+                // Almacenamos temporalmente los metadatos del lote para inyectar sus eventos de forma pura al final
+                l.idContenedor = idContenedorAcciones;
+                l.unidadFila = p.unidad || 'L';
+            });
 
-          let displayTotalProd = (key === 'Pza') ? Math.round(p.totalVolumen) : p.totalVolumen.toFixed(2);
-          
-          let badgeCaducidad = productoExpiraPronto 
-            ? `<span style="background:#ffedd5; color:#c2410c; padding:2px 6px; border-radius:4px; font-size:0.7rem; font-weight:bold; margin-left:10px; border:1px solid #fed7aa; white-space:nowrap;">⏳ Alerta Caducidad</span>` 
-            : "";
+            let displayTotalProd = (key === 'Pza') ? Math.round(p.totalVolumen) : p.totalVolumen.toFixed(2);
 
-          const card = document.createElement("div");
-          card.className = "product-card-compact";
-          card.setAttribute("data-stock", p.totalVolumen);
-          card.setAttribute("data-expira", productoExpiraPronto ? "true" : "false");
+            let badgeCaducidad = productoExpiraPronto
+                ? `<span style="background:#ffedd5; color:#c2410c; padding:2px 6px; border-radius:4px; font-size:0.7rem; font-weight:bold; margin-left:10px; border:1px solid #fed7aa; white-space:nowrap;">⏳ Alerta Caducidad</span>`
+                : "";
 
-          card.innerHTML = `
+            const card = document.createElement("div");
+            card.className = "product-card-compact";
+            card.setAttribute("data-stock", p.totalVolumen);
+            card.setAttribute("data-expira", productoExpiraPronto ? "true" : "false");
+
+            card.innerHTML = `
               <div class="card-indicator" style="background:${colorIndicador};"></div>
               
               <div class="card-header-compact" onclick="toggleDetalleProducto('${p.id}')" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: nowrap;">
@@ -208,159 +208,159 @@ function renderizarTablaProductos(productos) {
                   </div>
               </div>
           `;
-          contentGrupo.appendChild(card);
-      });
+            contentGrupo.appendChild(card);
+        });
 
-      groupWrapper.appendChild(headerGrupo);
-      groupWrapper.appendChild(contentGrupo);
-      contenedor.appendChild(groupWrapper);
-  });
+        groupWrapper.appendChild(headerGrupo);
+        groupWrapper.appendChild(contentGrupo);
+        contenedor.appendChild(groupWrapper);
+    });
 
-  // =========================================================================
-  // INYECCIÓN DE NODOS PUROS (EVITA CONFLICTOS DE TOKEN E HILOS DE COMILLAS)
-  // =========================================================================
-  activos.forEach(p => {
-      p.lotes.forEach(l => {
-          const divAcciones = document.getElementById(l.idContenedor);
-          if (!divAcciones) return;
+    // =========================================================================
+    // INYECCIÓN DE NODOS PUROS (EVITA CONFLICTOS DE TOKEN E HILOS DE COMILLAS)
+    // =========================================================================
+    activos.forEach(p => {
+        p.lotes.forEach(l => {
+            const divAcciones = document.getElementById(l.idContenedor);
+            if (!divAcciones) return;
 
-          let pNombreEscapado = String(l.raw_producto_nombre).replace(/'/g, "\\'");
+            let pNombreEscapado = String(l.raw_producto_nombre).replace(/'/g, "\\'");
 
-          // 1. Botón Mover / Transferir (🔄)
-          const btnMove = document.createElement("button");
-          btnMove.className = "btn-action btn-move";
-          btnMove.style.cssText = "width:28px; height:28px; font-size:0.8rem; margin:0; box-shadow:0 1px 2px rgba(0,0,0,0.1); cursor:pointer;";
-          btnMove.title = "Transferir Lote a otra Caja";
-          btnMove.innerText = "🔄";
-          btnMove.onclick = function() {
-              abrirTransferencia(l.raw_producto_id, pNombreEscapado, l.lote, l.volumen, l.ubicacion_id, l.presentacion_id, l.volumen_nominal, l.unidadFila);
-          };
-          divAcciones.appendChild(btnMove);
+            // 1. Botón Mover / Transferir (🔄)
+            const btnMove = document.createElement("button");
+            btnMove.className = "btn-action btn-move";
+            btnMove.style.cssText = "width:28px; height:28px; font-size:0.8rem; margin:0; box-shadow:0 1px 2px rgba(0,0,0,0.1); cursor:pointer;";
+            btnMove.title = "Transferir Lote a otra Caja";
+            btnMove.innerText = "🔄";
+            btnMove.onclick = function () {
+                abrirTransferencia(l.raw_producto_id, pNombreEscapado, l.lote, l.volumen, l.ubicacion_id, l.presentacion_id, l.volumen_nominal, l.unidadFila);
+            };
+            divAcciones.appendChild(btnMove);
 
-          
-// 2. Botón Transformar (🛠️)
-          const btnTrans = document.createElement("button");
-          btnTrans.className = "btn-action btn-transf"; // Línea corregida limpia
-          btnTrans.style.cssText = "width:28px; height:28px; font-size:0.8rem; margin:0; box-shadow:0 1px 2px rgba(0,0,0,0.1); cursor:pointer;";
-          btnTrans.title = "Transformar Lote";
-          btnTrans.innerText = "🛠️";
-          btnTrans.onclick = function() {
-              abrirTransformacion(l.raw_producto_id, pNombreEscapado, l.lote, l.volumen, l.ubicacion_id, l.presentacion_id, l.volumen_nominal, l.unidadFila);
-          };
-          divAcciones.appendChild(btnTrans);
 
-          // Controles exclusivos de administración
-          let esAdmin = localStorage.getItem("inventario_rol") === "admin";
-          if (esAdmin) {
-              // 3. Botón Ajuste Físico (✏️)
-              const btnAjuste = document.createElement("button");
-              btnAjuste.className = "btn-action";
-              btnAjuste.style.cssText = "background:#f1f5f9; color:#475569; width:28px; height:28px; font-size:0.8rem; margin:0; box-shadow:0 1px 2px rgba(0,0,0,0.1); cursor:pointer;";
-              btnAjuste.title = "Ajuste Físico (Merma/Cuadre)";
-              btnAjuste.innerText = "✏️";
-              btnAjuste.onclick = function() {
-                  abrirModalAjuste(l.raw_producto_id, pNombreEscapado, l.presentacion_id, l.ubicacion_id, l.lote, l.volumen, l.unidadFila);
-              };
-              divAcciones.appendChild(btnAjuste);
+            // 2. Botón Transformar (🛠️)
+            const btnTrans = document.createElement("button");
+            btnTrans.className = "btn-action btn-transf"; // Línea corregida limpia
+            btnTrans.style.cssText = "width:28px; height:28px; font-size:0.8rem; margin:0; box-shadow:0 1px 2px rgba(0,0,0,0.1); cursor:pointer;";
+            btnTrans.title = "Transformar Lote";
+            btnTrans.innerText = "🛠️";
+            btnTrans.onclick = function () {
+                abrirTransformacion(l.raw_producto_id, pNombreEscapado, l.lote, l.volumen, l.ubicacion_id, l.presentacion_id, l.volumen_nominal, l.unidadFila);
+            };
+            divAcciones.appendChild(btnTrans);
 
-              // 4. Botón Corrección Maestra Avanzada (🔧)
-              const btnMaster = document.createElement("button");
-              btnMaster.className = "btn-action";
-              btnMaster.style.cssText = "background:#1e293b; color:white; width:28px; height:28px; font-size:0.8rem; margin:0; box-shadow:0 1px 2px rgba(0,0,0,0.1); cursor:pointer;";
-              btnMaster.title = "🔧 Corrección Maestra de Lote (Admin)";
-              btnMaster.innerText = "🔧";
-              btnMaster.onclick = function() {
-                  abrirModalEdicionMaestra(l.raw_producto_id, pNombreEscapado, l.presentacion_id, l.ubicacion_id, l.ubicacion, l.lote, l.volumen, p.unidad, l.caducidad);
-              };
-              divAcciones.appendChild(btnMaster);
-          }
-      });
-  });
+            // Controles exclusivos de administración
+            let esAdmin = localStorage.getItem("inventario_rol") === "admin";
+            if (esAdmin) {
+                // 3. Botón Ajuste Físico (✏️)
+                const btnAjuste = document.createElement("button");
+                btnAjuste.className = "btn-action";
+                btnAjuste.style.cssText = "background:#f1f5f9; color:#475569; width:28px; height:28px; font-size:0.8rem; margin:0; box-shadow:0 1px 2px rgba(0,0,0,0.1); cursor:pointer;";
+                btnAjuste.title = "Ajuste Físico (Merma/Cuadre)";
+                btnAjuste.innerText = "✏️";
+                btnAjuste.onclick = function () {
+                    abrirModalAjuste(l.raw_producto_id, pNombreEscapado, l.presentacion_id, l.ubicacion_id, l.lote, l.volumen, l.unidadFila);
+                };
+                divAcciones.appendChild(btnAjuste);
+
+                // 4. Botón Corrección Maestra Avanzada (🔧)
+                const btnMaster = document.createElement("button");
+                btnMaster.className = "btn-action";
+                btnMaster.style.cssText = "background:#1e293b; color:white; width:28px; height:28px; font-size:0.8rem; margin:0; box-shadow:0 1px 2px rgba(0,0,0,0.1); cursor:pointer;";
+                btnMaster.title = "🔧 Corrección Maestra de Lote (Admin)";
+                btnMaster.innerText = "🔧";
+                btnMaster.onclick = function () {
+                    abrirModalEdicionMaestra(l.raw_producto_id, pNombreEscapado, l.presentacion_id, l.ubicacion_id, l.ubicacion, l.lote, l.volumen, p.unidad, l.caducidad);
+                };
+                divAcciones.appendChild(btnMaster);
+            }
+        });
+    });
 }
 
 // --- LOGICA DE BOTONES SWITCH (FILTROS) ---
-window.toggleFiltroStock = function() {
+window.toggleFiltroStock = function () {
     FILTRO_BAJO_STOCK = !FILTRO_BAJO_STOCK;
     document.getElementById("btnFiltroStock").classList.toggle("active", FILTRO_BAJO_STOCK);
     filtrarProductos();
 };
 
-window.toggleFiltroCaducidad = function() {
+window.toggleFiltroCaducidad = function () {
     FILTRO_PROX_CADUCAR = !FILTRO_PROX_CADUCAR;
     document.getElementById("btnFiltroCaducidad").classList.toggle("active", FILTRO_PROX_CADUCAR);
     filtrarProductos();
 };
 
 // --- EL SÚPER BUSCADOR Y FILTRADOR ---
-window.filtrarProductos = function() {
-  const txt = document.getElementById("buscadorProductos").value.toLowerCase();
-  const grupos = document.querySelectorAll(".inventory-group");
-  let encontradosGlobal = 0;
+window.filtrarProductos = function () {
+    const txt = document.getElementById("buscadorProductos").value.toLowerCase();
+    const grupos = document.querySelectorAll(".inventory-group");
+    let encontradosGlobal = 0;
 
-  grupos.forEach(grupo => {
-      const content = grupo.querySelector(".group-accordion-content");
-      const cards = content.querySelectorAll(".product-card-compact");
-      const icon = grupo.querySelector(".group-chevron");
-      let encontradosGrupo = 0;
+    grupos.forEach(grupo => {
+        const content = grupo.querySelector(".group-accordion-content");
+        const cards = content.querySelectorAll(".product-card-compact");
+        const icon = grupo.querySelector(".group-chevron");
+        let encontradosGrupo = 0;
 
-      cards.forEach(card => {
-          // --- MAGIA: Ahora lee todo el texto de la tarjeta (título, lote, variante, etc.) ---
-          const textoTarjeta = card.innerText.toLowerCase(); 
-          const stock = parseFloat(card.getAttribute("data-stock")) || 0;
-          const expira = card.getAttribute("data-expira") === "true";
-          
-          let pasaTexto = textoTarjeta.includes(txt);
-          let pasaStock = FILTRO_BAJO_STOCK ? (10 > stock) : true; 
-          let pasaCaducidad = FILTRO_PROX_CADUCAR ? expira : true;
+        cards.forEach(card => {
+            // --- MAGIA: Ahora lee todo el texto de la tarjeta (título, lote, variante, etc.) ---
+            const textoTarjeta = card.innerText.toLowerCase();
+            const stock = parseFloat(card.getAttribute("data-stock")) || 0;
+            const expira = card.getAttribute("data-expira") === "true";
 
-          if (pasaTexto && pasaStock && pasaCaducidad) {
-              card.style.display = "";
-              encontradosGrupo++;
-              encontradosGlobal++;
-          } else {
-              card.style.display = "none";
-          }
-      });
+            let pasaTexto = textoTarjeta.includes(txt);
+            let pasaStock = FILTRO_BAJO_STOCK ? (10 > stock) : true;
+            let pasaCaducidad = FILTRO_PROX_CADUCAR ? expira : true;
 
-      if (txt !== "" || FILTRO_BAJO_STOCK || FILTRO_PROX_CADUCAR) {
-          if (encontradosGrupo > 0) {
-              grupo.style.display = "";
-              content.style.display = "block"; 
-              if(icon) icon.style.transform = 'rotate(90deg)';
-          } else {
-              grupo.style.display = "none"; 
-          }
-      } else {
-          grupo.style.display = "";
-          content.style.display = "none"; 
-          if(icon) icon.style.transform = 'rotate(0deg)';
-      }
-  });
+            if (pasaTexto && pasaStock && pasaCaducidad) {
+                card.style.display = "";
+                encontradosGrupo++;
+                encontradosGlobal++;
+            } else {
+                card.style.display = "none";
+            }
+        });
 
-  let msg = document.getElementById("msg-no-resultados");
-  if(encontradosGlobal === 0) {
-     if(!msg) {
-        msg = document.createElement("div");
-        msg.id = "msg-no-resultados";
-        msg.style.cssText = "text-align:center; padding:40px; color:#64748b; font-size:0.95rem; background:white; border-radius:8px; border:1px solid #e2e8f0; margin-top:15px;";
-        msg.innerHTML = "No se encontraron productos, variantes ni lotes que coincidan con la búsqueda.";
-        document.getElementById("contenedor-productos-lista").appendChild(msg);
-     }
-  } else if (msg) {
-     msg.remove();
-  }
+        if (txt !== "" || FILTRO_BAJO_STOCK || FILTRO_PROX_CADUCAR) {
+            if (encontradosGrupo > 0) {
+                grupo.style.display = "";
+                content.style.display = "block";
+                if (icon) icon.style.transform = 'rotate(90deg)';
+            } else {
+                grupo.style.display = "none";
+            }
+        } else {
+            grupo.style.display = "";
+            content.style.display = "none";
+            if (icon) icon.style.transform = 'rotate(0deg)';
+        }
+    });
+
+    let msg = document.getElementById("msg-no-resultados");
+    if (encontradosGlobal === 0) {
+        if (!msg) {
+            msg = document.createElement("div");
+            msg.id = "msg-no-resultados";
+            msg.style.cssText = "text-align:center; padding:40px; color:#64748b; font-size:0.95rem; background:white; border-radius:8px; border:1px solid #e2e8f0; margin-top:15px;";
+            msg.innerHTML = "No se encontraron productos, variantes ni lotes que coincidan con la búsqueda.";
+            document.getElementById("contenedor-productos-lista").appendChild(msg);
+        }
+    } else if (msg) {
+        msg.remove();
+    }
 };
 
 // --- EXPORTAR A EXCEL (CSV) NATIVO ---
-window.exportarInventarioCSV = function() {
-    if(!PRODUCTOS_CACHE || PRODUCTOS_CACHE.length === 0) {
+window.exportarInventarioCSV = function () {
+    if (!PRODUCTOS_CACHE || PRODUCTOS_CACHE.length === 0) {
         return Swal.fire('Sin Datos', 'No hay inventario para exportar.', 'info');
     }
-    
+
     let csv = "Producto,Variante_Alias,Presentacion,Ubicacion,Lote,Caducidad,Volumen,Unidad\n";
 
     PRODUCTOS_CACHE.forEach(p => {
-        if(p.lotes && p.lotes.length > 0) {
+        if (p.lotes && p.lotes.length > 0) {
             p.lotes.forEach(l => {
                 let nombre = `"${(p.nombre || "").replace(/"/g, '""')}"`;
                 let alias = `"${(l.alias || "").replace(/"/g, '""')}"`;
@@ -370,72 +370,72 @@ window.exportarInventarioCSV = function() {
                 let cad = `"${l.caducidad || ""}"`;
                 let vol = l.volumen || 0;
                 let uni = `"${p.unidad || ""}"`;
-                
+
                 csv += `${nombre},${alias},${pres},${ubic},${lote},${cad},${vol},${uni}\n`;
             });
         }
     });
 
-    const blob = new Blob(["\ufeff", csv], { type: 'text/csv;charset=utf-8;' }); 
+    const blob = new Blob(["\ufeff", csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
-    
+
     const link = document.createElement("a");
     link.href = url;
     link.download = `Inventario_Global_${new Date().toISOString().split('T')[0]}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    
+
     if (typeof mostrarToast === 'function') mostrarToast("Descarga iniciada ✅", "success");
 };
 
 // --- UTILIDADES ---
-window.toggleGrupo = function(id) {
+window.toggleGrupo = function (id) {
     const el = document.getElementById(id);
     const icon = document.getElementById('icon-' + id);
     if (!el) return;
     if (el.style.display === 'none') {
         el.style.display = 'block';
-        if(icon) icon.style.transform = 'rotate(90deg)';
+        if (icon) icon.style.transform = 'rotate(90deg)';
     } else {
         el.style.display = 'none';
-        if(icon) icon.style.transform = 'rotate(0deg)';
+        if (icon) icon.style.transform = 'rotate(0deg)';
     }
 };
 
-window.toggleDetalleProducto = function(id) {
-  const el = document.getElementById("detalle-" + id);
-  if (el) el.style.display = (el.style.display === "block") ? "none" : "block";
+window.toggleDetalleProducto = function (id) {
+    const el = document.getElementById("detalle-" + id);
+    if (el) el.style.display = (el.style.display === "block") ? "none" : "block";
 };
 
 // --- MODALES (GUARDAR PRODUCTO) ---
-function guardarProducto() { 
-  let nombreRaw = document.getElementById("nuevoNombre").value;
-  const nombreLimpio = nombreRaw.trim().replace(/\s+/g, ' ').toUpperCase();
-  const desc = document.getElementById("nuevaDescripcion").value;
-  const unidad = document.getElementById("nuevaUnidad").value;
-  if (!nombreLimpio) return mostrarToast("Falta el nombre", "warning");
+function guardarProducto() {
+    let nombreRaw = document.getElementById("nuevoNombre").value;
+    const nombreLimpio = nombreRaw.trim().replace(/\s+/g, ' ').toUpperCase();
+    const desc = document.getElementById("nuevaDescripcion").value;
+    const unidad = document.getElementById("nuevaUnidad").value;
+    if (!nombreLimpio) return mostrarToast("Falta el nombre", "warning");
 
-  if(typeof cerrarModal === 'function') cerrarModal();
-  if(typeof cerrarModalGenerico === 'function') cerrarModalGenerico('modalProducto'); 
-  Swal.fire({ title: 'Procesando...', text: 'Registrando producto...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
+    if (typeof cerrarModal === 'function') cerrarModal();
+    if (typeof cerrarModalGenerico === 'function') cerrarModalGenerico('modalProducto');
+    Swal.fire({ title: 'Procesando...', text: 'Registrando producto...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
 
-  google.script.run.withSuccessHandler(function() {
-      Swal.fire("¡Éxito!", `El producto ha sido registrado.`, "success");
-      document.getElementById("nuevoNombre").value = "";
-      document.getElementById("nuevaDescripcion").value = "";
-      if(typeof recargarSelectores === 'function') recargarSelectores();
-      if(typeof cargarDashboardProductos === 'function') cargarDashboardProductos();
-  }).withFailureHandler(function(err) {
-      Swal.fire("No se pudo registrar", err.message, "error");
-      if(typeof abrirModalGenerico === 'function') abrirModalGenerico('modalProducto'); 
-  }).registrarNuevoProducto({ nombre: nombreLimpio, descripcion: desc, unidad: unidad });
+    google.script.run.withSuccessHandler(function () {
+        Swal.fire("¡Éxito!", `El producto ha sido registrado.`, "success");
+        document.getElementById("nuevoNombre").value = "";
+        document.getElementById("nuevaDescripcion").value = "";
+        if (typeof recargarSelectores === 'function') recargarSelectores();
+        if (typeof cargarDashboardProductos === 'function') cargarDashboardProductos();
+    }).withFailureHandler(function (err) {
+        Swal.fire("No se pudo registrar", err.message, "error");
+        if (typeof abrirModalGenerico === 'function') abrirModalGenerico('modalProducto');
+    }).registrarNuevoProducto({ nombre: nombreLimpio, descripcion: desc, unidad: unidad });
 }
 
 // --- LÓGICA DE AJUSTES DE INVENTARIO ---
 let TEMP_AJUSTE = null;
 
-window.abrirModalAjuste = function(pId, pNombre, presId, ubicId, lote, stockActual, unidad) {
+window.abrirModalAjuste = function (pId, pNombre, presId, ubicId, lote, stockActual, unidad) {
     TEMP_AJUSTE = {
         productoId: pId,
         productoNombre: pNombre,
@@ -469,7 +469,7 @@ window.abrirModalAjuste = function(pId, pNombre, presId, ubicId, lote, stockActu
         preConfirm: () => {
             const nuevoVol = document.getElementById('swal-ajuste-nuevo').value;
             const motivo = document.getElementById('swal-ajuste-motivo').value.trim();
-            
+
             // TRUCO ANTI-GOOGLE APPS SCRIPT: 
             // Usamos Math.sign() === -1 en lugar del símbolo "menor que" para evitar que el editor lo rompa.
             if (!nuevoVol || Math.sign(nuevoVol) === -1) {
@@ -502,7 +502,7 @@ function ejecutarAjusteStock(nuevoVolumen, motivo) {
 
     mostrarCargando("Sincronizando ajuste con el servidor...");
 
-    api.ajustarStockFisico(datos, function(res) {
+    api.ajustarStockFisico(datos, function (res) {
         ocultarCargando();
         if (res.success) {
             Swal.fire('¡Ajustado!', `El stock se corrigió correctamente. Diferencia: ${res.diferencia > 0 ? '+' : ''}${res.diferencia} ${TEMP_AJUSTE.unidad}`, 'success');
@@ -510,21 +510,21 @@ function ejecutarAjusteStock(nuevoVolumen, motivo) {
         } else {
             Swal.fire('Error', res.error, 'error');
         }
-    }, function(err) {
+    }, function (err) {
         ocultarCargando();
         Swal.fire('Error', err.message, 'error');
     });
 }
 
 // --- LÓGICA DE KARDEX (LIBRO MAYOR) ---
-window.abrirKardex = function(productoId, productoNombre) {
+window.abrirKardex = function (productoId, productoNombre) {
     document.getElementById('kardex-producto-nombre').innerText = productoNombre;
     document.getElementById('kardexBody').innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 40px; color: #64748b;"><div class="modern-spinner"></div><p style="margin-top:15px;">Rastreando historia...</p></td></tr>`;
-    
+
     abrirModalGenerico('modalKardex');
 
     // AQUÍ PASAMOS AMBOS DATOS: ID y Nombre
-    api.obtenerKardexProducto(productoId, productoNombre, function(res) {
+    api.obtenerKardexProducto(productoId, productoNombre, function (res) {
         let tbody = document.getElementById('kardexBody');
         if (!res.success) {
             tbody.innerHTML = `<tr><td colspan="5" style="color:red; text-align:center; padding:20px;">Error: ${res.error}</td></tr>`;
@@ -543,15 +543,15 @@ window.abrirKardex = function(productoId, productoNombre) {
             let signo = mov.cantidad > 0 ? "+" : ""; // El negativo ya viene en el número
 
             // Colores por tipo de movimiento
-            if (mov.tipo.includes("ENTRADA") || mov.tipo.includes("(+)")) { 
-                colorTipo = "#10b981"; 
-                badgeTipo = "🟩 " + mov.tipo; 
-            } else if (mov.tipo === "SALIDA") { 
-                colorTipo = "#3b82f6"; 
-                badgeTipo = "🟦 " + mov.tipo; 
-            } else if (mov.tipo.includes("MERMA") || mov.tipo.includes("BAJA") || mov.tipo.includes("(-)")) { 
-                colorTipo = "#ef4444"; 
-                badgeTipo = "🟥 " + mov.tipo; 
+            if (mov.tipo.includes("ENTRADA") || mov.tipo.includes("(+)")) {
+                colorTipo = "#10b981";
+                badgeTipo = "🟩 " + mov.tipo;
+            } else if (mov.tipo === "SALIDA") {
+                colorTipo = "#3b82f6";
+                badgeTipo = "🟦 " + mov.tipo;
+            } else if (mov.tipo.includes("MERMA") || mov.tipo.includes("BAJA") || mov.tipo.includes("(-)")) {
+                colorTipo = "#ef4444";
+                badgeTipo = "🟥 " + mov.tipo;
             }
 
             html += `
@@ -569,7 +569,7 @@ window.abrirKardex = function(productoId, productoNombre) {
 
 let CACHE_MASTER_EDIT = null;
 
-window.abrirModalEdicionMaestra = function(pId, pNombre, presId, ubicId, ubicNombre, lote, volumen, unidad, caducidadStr) {
+window.abrirModalEdicionMaestra = function (pId, pNombre, presId, ubicId, ubicNombre, lote, volumen, unidad, caducidadStr) {
     CACHE_MASTER_EDIT = { pId, presId, ubicId, loteOriginal: lote, unidad };
 
     document.getElementById("master-lbl-producto").innerText = pNombre;
@@ -581,12 +581,12 @@ window.abrirModalEdicionMaestra = function(pId, pNombre, presId, ubicId, ubicNom
 
     // Resetear input mes/año de elaboración
     document.getElementById("master-input-elab").value = "";
-    
+
     // Formatear fecha para el input tipo date (YYYY-MM-DD)
     let inputCad = document.getElementById("master-input-cad");
     if (caducidadStr && caducidadStr !== "---" && !caducidadStr.includes("SIN-FECHA")) {
         let partes = caducidadStr.split("/");
-        if (partes.length === 3) inputCad.value = `${partes[2]}-${partes[1].padStart(2,'0')}-${partes[0].padStart(2,'0')}`;
+        if (partes.length === 3) inputCad.value = `${partes[2]}-${partes[1].padStart(2, '0')}-${partes[0].padStart(2, '0')}`;
     } else {
         inputCad.value = "";
     }
@@ -594,7 +594,7 @@ window.abrirModalEdicionMaestra = function(pId, pNombre, presId, ubicId, ubicNom
     abrirModalGenerico('modalEdicionMaestraAdmin');
 };
 
-window.ejecutarCorreccionMaestraAdmin = function() {
+window.ejecutarCorreccionMaestraAdmin = function () {
     if (!CACHE_MASTER_EDIT) return;
 
     let nuevoLote = document.getElementById("master-input-lote").value.trim();
@@ -603,7 +603,7 @@ window.ejecutarCorreccionMaestraAdmin = function() {
     let fCad = document.getElementById("master-input-cad").value;
 
     if (!nuevoLote) return Swal.fire("Atención", "El código de lote no puede quedar vacío.", "warning");
-    
+
     // CORRECCIÓN AQUÍ: Cambiamos '&lt;' por '<' para que JavaScript evalúe correctamente números negativos
     if (!nuevoVol || Math.sign(Number(nuevoVol)) === -1) return Swal.fire("Atención", "Ingresa una cantidad válida mayor o igual a 0.", "warning");
 
@@ -629,18 +629,18 @@ window.ejecutarCorreccionMaestraAdmin = function() {
     cerrarModalGenerico('modalEdicionMaestraAdmin');
     if (typeof mostrarCargando === "function") mostrarCargando("Ejecutando re-cálculo e impacto histórico...");
 
-    api.edicionMaestraLoteAdmin(datos, function(res) {
+    api.edicionMaestraLoteAdmin(datos, function (res) {
         if (typeof ocultarCargando === "function") ocultarCargando();
         if (res.success) {
             let msg = "El inventario activo ha sido modificado con éxito.";
             if (res.corregidoEnBitacora) msg += " La bitácora de ingresos históricos se re-calculó de forma correcta.";
-            
+
             Swal.fire("🔧 Corrección Completada", msg, "success");
             cargarDashboardProductos(); // Refrescar la vista actual
         } else {
             Swal.fire("Error", res.error, "error");
         }
-    }, function(err) {
+    }, function (err) {
         if (typeof ocultarCargando === "function") ocultarCargando();
         Swal.fire("Fallo de red", err.message, "error");
     });
