@@ -17,11 +17,11 @@ function obtenerSpreadsheet() {
   } catch (e) {
     throw new Error(
       "No se pudo abrir la base configurada para el entorno actual (" +
-        getCurrentEnvironment() +
-        "). ID objetivo: " +
-        getActiveDbId() +
-        ". Detalle: " +
-        e.message,
+      getCurrentEnvironment() +
+      "). ID objetivo: " +
+      getActiveDbId() +
+      ". Detalle: " +
+      e.message,
     );
   }
 }
@@ -677,7 +677,7 @@ function realizarTransformacion(datos) {
         String(data[i][2]) == String(datos.origenId) &&
         String(data[i][0]) == String(datos.productoIdOrigen) &&
         String(data[i][6]).toUpperCase() ==
-          String(datos.loteOrigen).toUpperCase()
+        String(datos.loteOrigen).toUpperCase()
       ) {
         filasOrigen.push({
           index: i + 1,
@@ -1026,8 +1026,8 @@ function obtenerSugerenciaFIFO(productoId, carrito) {
 
     // LÓGICA DE FAMILIAS: Extrae el nombre base quitando los paréntesis
     const obtenerNombrePadre = (rawName) => {
-        let match = String(rawName).match(/(.*)\(([^)]+)\)$/);
-        return match ? match[2].trim().toUpperCase() : String(rawName).trim().toUpperCase();
+      let match = String(rawName).match(/(.*)\(([^)]+)\)$/);
+      return match ? match[2].trim().toUpperCase() : String(rawName).trim().toUpperCase();
     };
 
     let idsValidos = new Set();
@@ -1036,24 +1036,24 @@ function obtenerSugerenciaFIFO(productoId, carrito) {
 
     // Mapear todas las variantes que pertenezcan a la misma familia
     if (sP) {
-        const dataProd = sP.getDataRange().getValues();
-        // 1. Descubrir cuál es el nombre "padre" del producto que buscamos
+      const dataProd = sP.getDataRange().getValues();
+      // 1. Descubrir cuál es el nombre "padre" del producto que buscamos
+      for (let i = 1; i < dataProd.length; i++) {
+        if (String(dataProd[i][0]).trim() === prodIdBuscado) {
+          nombreBuscado = obtenerNombrePadre(dataProd[i][1]);
+          break;
+        }
+      }
+      // 2. Meter a la "bolsa" todos los IDs que compartan ese nombre padre
+      if (nombreBuscado !== "") {
         for (let i = 1; i < dataProd.length; i++) {
-            if (String(dataProd[i][0]).trim() === prodIdBuscado) {
-                nombreBuscado = obtenerNombrePadre(dataProd[i][1]);
-                break;
-            }
+          if (obtenerNombrePadre(dataProd[i][1]) === nombreBuscado) {
+            idsValidos.add(String(dataProd[i][0]).trim());
+          }
+          // Guardar el nombre exacto de cada variante
+          mapProdNames[String(dataProd[i][0]).trim()] = String(dataProd[i][1]).trim();
         }
-        // 2. Meter a la "bolsa" todos los IDs que compartan ese nombre padre
-        if (nombreBuscado !== "") {
-            for (let i = 1; i < dataProd.length; i++) {
-                if (obtenerNombrePadre(dataProd[i][1]) === nombreBuscado) {
-                    idsValidos.add(String(dataProd[i][0]).trim());
-                }
-                // Guardar el nombre exacto de cada variante
-                mapProdNames[String(dataProd[i][0]).trim()] = String(dataProd[i][1]).trim();
-            }
-        }
+      }
     }
 
     let lotes = [];
@@ -1069,11 +1069,11 @@ function obtenerSugerenciaFIFO(productoId, carrito) {
         const stock = Number(data[i][3]);
 
         let existente = lotes.find((l) =>
-            l.producto_id === pIdFila && // OJO: Exigimos que sea el ID exacto de la variante
-            l.presentacion_id === presId &&
-            l.ubicacion_id === uId &&
-            l.lote === lote &&
-            _fmtFechaDisplay(l.caducidad) === caducidadStr
+          l.producto_id === pIdFila && // OJO: Exigimos que sea el ID exacto de la variante
+          l.presentacion_id === presId &&
+          l.ubicacion_id === uId &&
+          l.lote === lote &&
+          _fmtFechaDisplay(l.caducidad) === caducidadStr
         );
 
         if (existente) {
@@ -1100,9 +1100,9 @@ function obtenerSugerenciaFIFO(productoId, carrito) {
     if (carrito && Array.isArray(carrito)) {
       carrito.forEach((item) => {
         const l = lotes.find((x) =>
-            x.producto_id === String(item.producto_id).trim() && 
-            x.lote === String(item.lote).trim() &&
-            x.ubicacion_id === String(item.ubicacion_id).trim()
+          x.producto_id === String(item.producto_id).trim() &&
+          x.lote === String(item.lote).trim() &&
+          x.ubicacion_id === String(item.ubicacion_id).trim()
         );
         if (l) l.stock_real -= Number(item.volumen_L);
       });
@@ -1209,10 +1209,10 @@ function obtenerMaterialesCaducados() {
       .slice(1)
       .forEach(
         (r) =>
-          (mapProd[String(r[0]).trim()] = {
-            nombre: r[1],
-            unidad: _normalizarUnidadLabel(r[3]),
-          }),
+        (mapProd[String(r[0]).trim()] = {
+          nombre: r[1],
+          unidad: _normalizarUnidadLabel(r[3]),
+        }),
       );
   if (sPr)
     sPr
@@ -1365,8 +1365,8 @@ function procesarBajaOficial(itemsBaja) {
     } catch (e) {
       throw new Error(
         "Paso 4: No se encontró la carpeta en Drive. Revisa el ID y los permisos. (" +
-          e.message +
-          ")",
+        e.message +
+        ")",
       );
     }
 
@@ -1384,8 +1384,8 @@ function procesarBajaOficial(itemsBaja) {
     } catch (e) {
       throw new Error(
         "Paso 5: Falló al crear el Excel o copiar la plantilla. (" +
-          e.message +
-          ")",
+        e.message +
+        ")",
       );
     }
 
@@ -1454,8 +1454,8 @@ function procesarBajaOficial(itemsBaja) {
     } catch (e) {
       throw new Error(
         "Paso 6: Falló al escribir los datos en el nuevo archivo. (" +
-          e.message +
-          ")",
+        e.message +
+        ")",
       );
     }
 
@@ -1506,8 +1506,8 @@ function procesarBajaOficial(itemsBaja) {
     } catch (e) {
       throw new Error(
         "Paso 8: Falló al organizar el archivo Excel final. (" +
-          e.message +
-          ")",
+        e.message +
+        ")",
       );
     }
 
@@ -1623,10 +1623,10 @@ function obtenerDetallePedidoCompleto(idPedido) {
           dD[i][6] && String(dD[i][6]).trim() !== ""
             ? unidadFila
             : mapUnidadPorNombre[
-                String(pName || "")
-                  .trim()
-                  .toUpperCase()
-              ] || "L";
+            String(pName || "")
+              .trim()
+              .toUpperCase()
+            ] || "L";
 
         items.push({
           producto: pName,
@@ -1695,7 +1695,7 @@ function obtenerOCrearCarpetaPedido(idPedido) {
     try {
       let folderId = String(linkGuardado).split("/").pop().split("?")[0];
       return DriveApp.getFolderById(folderId);
-    } catch (e) {}
+    } catch (e) { }
   }
 
   let folderPadre;
@@ -2361,7 +2361,7 @@ function obtenerHistorialEntradas() {
     if (!sEntradas) return { success: true, data: [] };
 
     const mapProd = {}, mapPres = {}, mapUbic = {};
-    
+
     // 1. Mapear Catálogos y Unidades
     if (sP && sP.getLastRow() > 1) {
       sP.getDataRange().getValues().slice(1).forEach((r) => {
@@ -2369,15 +2369,15 @@ function obtenerHistorialEntradas() {
         let baseName = rawName;
         let match = rawName.match(/(.*)\(([^)]+)\)$/);
         if (match) baseName = match[2].trim();
-        
+
         let uniRaw = String(r[3]).trim().toLowerCase();
         let uni = "L";
         if (uniRaw.includes("pza") || uniRaw.includes("pieza") || uniRaw.includes("unid")) uni = "Pza";
         if (uniRaw.includes("kg") || uniRaw.includes("kilo")) uni = "Kg";
 
-        mapProd[String(r[0]).trim().toUpperCase()] = { 
-           nombreBase: baseName, 
-           unidad: uni
+        mapProd[String(r[0]).trim().toUpperCase()] = {
+          nombreBase: baseName,
+          unidad: uni
         };
       });
     }
@@ -2387,16 +2387,16 @@ function obtenerHistorialEntradas() {
     // 2. Calcular Stock Físico VIGENTE actual
     let stockVigente = {};
     if (sInv && sInv.getLastRow() > 1) {
-        const dInv = sInv.getDataRange().getValues();
-        for (let i = 1; i < dInv.length; i++) {
-            let pId = String(dInv[i][0]).trim().toUpperCase();
-            let stock = Number(dInv[i][3]) || 0;
-            if (stock > 0.001) {
-                let baseName = mapProd[pId] ? mapProd[pId].nombreBase : pId;
-                if (!stockVigente[baseName]) stockVigente[baseName] = 0;
-                stockVigente[baseName] += stock;
-            }
+      const dInv = sInv.getDataRange().getValues();
+      for (let i = 1; i < dInv.length; i++) {
+        let pId = String(dInv[i][0]).trim().toUpperCase();
+        let stock = Number(dInv[i][3]) || 0;
+        if (stock > 0.001) {
+          let baseName = mapProd[pId] ? mapProd[pId].nombreBase : pId;
+          if (!stockVigente[baseName]) stockVigente[baseName] = 0;
+          stockVigente[baseName] += stock;
         }
+      }
     }
 
     // 3. Leer TODO el historial de Entradas y agruparlo
@@ -2410,40 +2410,40 @@ function obtenerHistorialEntradas() {
       let pId = String(r[1]).trim().toUpperCase();
       let infoProd = mapProd[pId] || { nombreBase: pId, unidad: "L" };
       let baseName = infoProd.nombreBase;
-      
+
       let pres = mapPres[String(r[2]).trim().toUpperCase()] || r[2];
       let idUbicRaw = String(r[3]).trim();
       let ubic = mapUbic[idUbicRaw.toUpperCase()];
       if (!ubic) ubic = (idUbicRaw.length > 20 && idUbicRaw.includes("-")) ? "Ubic. Eliminada" : idUbicRaw;
-      
+
       let cant = Number(r[4]) || 0;
       let lote = String(r[5]).trim();
-      let fecha = r[0]; 
-      
+      let fecha = r[0];
+
       if (!agrupado[baseName]) {
-         agrupado[baseName] = {
-             nombre: baseName,
-             unidad: infoProd.unidad,
-             total_ingresado: 0,
-             stock_vigente: stockVigente[baseName] || 0,
-             historial: []
-         };
+        agrupado[baseName] = {
+          nombre: baseName,
+          unidad: infoProd.unidad,
+          total_ingresado: 0,
+          stock_vigente: stockVigente[baseName] || 0,
+          historial: []
+        };
       }
-      
+
       agrupado[baseName].total_ingresado += cant;
       agrupado[baseName].historial.push({
-         fecha: fecha,
-         presentacion: pres,
-         ubicacion: ubic,
-         cantidad: cant,
-         lote: lote
+        fecha: fecha,
+        presentacion: pres,
+        ubicacion: ubic,
+        cantidad: cant,
+        lote: lote
       });
     }
 
     // 4. Invertir historial (lo más nuevo arriba) y ordenar alfabéticamente
     let resultado = Object.values(agrupado).map(p => {
-        p.historial.reverse(); 
-        return p;
+      p.historial.reverse();
+      return p;
     }).sort((a, b) => a.nombre.localeCompare(b.nombre));
 
     // Usamos JSON.parse(stringify) para asegurar compatibilidad total al mandar al Frontend
@@ -2652,10 +2652,10 @@ function obtenerEstadisticasDashboard() {
         if (f.getFullYear() === anioActual)
           stats.tendenciaAnual.gastos[f.getMonth()] += costo;
 
-// 📦 PEDIDOS (Solo envíos de material reales)
+        // 📦 PEDIDOS (Solo envíos de material reales)
         if (!isExterno) {
           idPedAceptados.add(idPed);
-          
+
           // --- NUEVO: CONTEO HISTÓRICO DE ESTATUS (Fuera de la restricción del mes) ---
           if (estatus.includes("ENTREGADO")) stats.kpi.enviosCompletados++;
           else if (estatus.includes("CANCELADO")) stats.kpi.enviosCancelados++;
@@ -2665,7 +2665,7 @@ function obtenerEstadisticasDashboard() {
           if (mesStr === mesActualStr) {
             stats.kpi.pedidosMesActual++;
           }
-          
+
           if (f.getFullYear() === anioActual)
             stats.tendenciaAnual.pedidos[f.getMonth()]++;
 
@@ -2849,7 +2849,7 @@ function ajustarStockFisico(datos) {
         String(dataInv[i][1]).trim() === String(datos.presentacionId).trim() &&
         String(dataInv[i][2]).trim() === String(datos.ubicacionId).trim() &&
         String(dataInv[i][6]).trim().toUpperCase() ===
-          String(datos.lote).trim().toUpperCase()
+        String(datos.lote).trim().toUpperCase()
       ) {
         filaEncontrada = i + 1;
         stockAnterior = Number(dataInv[i][3]);
@@ -3015,10 +3015,10 @@ function obtenerKardexProducto(productoId, productoNombre) {
       let fechaTexto = isNaN(f.getTime())
         ? String(h.fecha)
         : Utilities.formatDate(
-            f,
-            Session.getScriptTimeZone(),
-            "dd/MM/yyyy HH:mm",
-          );
+          f,
+          Session.getScriptTimeZone(),
+          "dd/MM/yyyy HH:mm",
+        );
       return {
         fechaStr: fechaTexto,
         tipo: h.tipo,
@@ -3308,7 +3308,7 @@ function agregarDireccionCliente(idCliente, nuevaDireccion) {
         let dirs = [];
         try {
           dirs = JSON.parse(data[i][6] || "[]");
-        } catch (e) {}
+        } catch (e) { }
 
         if (!dirs.includes(nuevaDireccion)) {
           dirs.push(nuevaDireccion);
@@ -3548,7 +3548,7 @@ function subirDocumentoCatalogo(
         if (data[i][6]) {
           try {
             mediaLinks = JSON.parse(data[i][6]);
-          } catch (e) {}
+          } catch (e) { }
         }
         break;
       }
@@ -3770,7 +3770,7 @@ function generarRecomendacionID(perfilBuscado) {
 function generarDocumentosInternacionales(idPedido, datosPedido, items) {
   try {
     SpreadsheetApp.flush();
-    
+
     // CREACIÓN FORZADA DE CARPETA: Asegura que el flujo de subida de archivos siempre tenga vida
     const folder = obtenerOCrearCarpetaPedido(idPedido);
     const folderUrl = folder.getUrl();
@@ -3781,10 +3781,10 @@ function generarDocumentosInternacionales(idPedido, datosPedido, items) {
     let empresa = String(datosPedido.empresa || "").toUpperCase().trim();
     let contacto = String(datosPedido.nombreCliente || "").toUpperCase().trim();
     let nombreCompany = empresa ? empresa : contacto;
-    
+
     let folioUnico = null;
     if (datosPedido.generarProforma || datosPedido.generarCI) {
-        folioUnico = obtenerSiguienteFacturaProforma(nombreCompany, folderUrl);
+      folioUnico = obtenerSiguienteFacturaProforma(nombreCompany, folderUrl);
     }
 
     if (datosPedido.generarPL) generarPackingListPDF(idPedido, datosPedido, items, folder);
@@ -3804,21 +3804,21 @@ function generarPackingListPDF(idPedido, datosPedido, items, folder) {
   let totalPiezas = 0;
   let totalVolumen = 0;
 
-  items.forEach(function(item) {
-      let volUnitario = 1;
-      let match = String(item.nombre_presentacion).match(/[\d\.]+/);
-      if (match) volUnitario = parseFloat(match[0]);
+  items.forEach(function (item) {
+    let volUnitario = 1;
+    let match = String(item.nombre_presentacion).match(/[\d\.]+/);
+    if (match) volUnitario = parseFloat(match[0]);
 
-      let uni = String(item.unidad_medida).toUpperCase();
-      let key = volUnitario + "_" + uni;
+    let uni = String(item.unidad_medida).toUpperCase();
+    let key = volUnitario + "_" + uni;
 
-      if (!grupos[key]) {
-          grupos[key] = { volumenUnitario: volUnitario, unidad: uni, piezas: 0 };
-      }
-      let pzas = Number(item.piezas) || 0;
-      grupos[key].piezas += pzas;
-      totalPiezas += pzas;
-      totalVolumen += (Number(item.volumen_L) || 0);
+    if (!grupos[key]) {
+      grupos[key] = { volumenUnitario: volUnitario, unidad: uni, piezas: 0 };
+    }
+    let pzas = Number(item.piezas) || 0;
+    grupos[key].piezas += pzas;
+    totalPiezas += pzas;
+    totalVolumen += (Number(item.volumen_L) || 0);
   });
 
   let pesoTotalKg = totalVolumen + 0.5;
@@ -3826,7 +3826,7 @@ function generarPackingListPDF(idPedido, datosPedido, items, folder) {
   // --- 2. NOMBRES LIMPIOS Y CREACIÓN TEMPORAL ---
   let nombreEmpresaReal = String(datosPedido.empresa || "").toUpperCase().trim();
   let nombreClienteReal = String(datosPedido.nombreCliente || "").toUpperCase().trim();
-  
+
   let clnEmpresa = nombreEmpresaReal.replace(/[^A-Z0-9]/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "");
   let clnPersona = nombreClienteReal.replace(/[^A-Z0-9]/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "");
 
@@ -3837,12 +3837,12 @@ function generarPackingListPDF(idPedido, datosPedido, items, folder) {
   let tempSS = SpreadsheetApp.create(docName);
   let newSheet = sTemplate.copyTo(tempSS);
   newSheet.setName("PackingList");
-  newSheet.showSheet(); 
-  tempSS.deleteSheet(tempSS.getSheets()[0]); 
-  
+  newSheet.showSheet();
+  tempSS.deleteSheet(tempSS.getSheets()[0]);
+
   let sheet = tempSS.getSheetByName("PackingList");
 
-// --- 3. LLENAR CABECERAS Y BUSCAR CONTENT ---
+  // --- 3. LLENAR CABECERAS Y BUSCAR CONTENT ---
   let data = sheet.getDataRange().getValues();
   let startRow = -1;
 
@@ -3850,62 +3850,62 @@ function generarPackingListPDF(idPedido, datosPedido, items, folder) {
   let esRecepcion = (datosPedido.rol === "Recibimos");
   let finalName = esRecepcion ? "POLAQUIMIA S.A. DE C.V." : (nombreEmpresaReal || nombreClienteReal);
   let finalTel = esRecepcion ? "5579784490" : (datosPedido.telefono || "N/A");
-  
+
   let pDirFull = "AZAHARES 26 COL. SANTA MARIA INSURGENTES, CUAUHTEMOC C.P. 06430 CIUDAD DE MEXICO, MEXICO";
   let dirToProcess = esRecepcion ? pDirFull : String(datosPedido.direccion).toUpperCase();
-  let lineas = dividirTextoInteligente(dirToProcess, 55); 
+  let lineas = dividirTextoInteligente(dirToProcess, 55);
 
   for (let i = 0; i < data.length; i++) {
-      let rowText = String(data[i][0]).trim().toUpperCase();
-      let filaActual = Number(i) + 1; 
+    let rowText = String(data[i][0]).trim().toUpperCase();
+    let filaActual = Number(i) + 1;
 
-      if (rowText.includes("SHIPPING DATE")) sheet.getRange(filaActual, 2).setValue(new Date()).setHorizontalAlignment("left");
-      else if (rowText.includes("GUIDE NUMBER")) sheet.getRange(filaActual, 2).setValue(datosPedido.guia || "PENDIENTE").setHorizontalAlignment("left");
-      else if (rowText.includes("NAME")) sheet.getRange(filaActual, 2).setValue(finalName).setHorizontalAlignment("left");
-      else if (rowText.includes("TEL")) sheet.getRange(filaActual, 2).setValue(finalTel).setHorizontalAlignment("left");
-      else if (rowText.includes("CONTENT")) {
-          startRow = filaActual + 1;
+    if (rowText.includes("SHIPPING DATE")) sheet.getRange(filaActual, 2).setValue(new Date()).setHorizontalAlignment("left");
+    else if (rowText.includes("GUIDE NUMBER")) sheet.getRange(filaActual, 2).setValue(datosPedido.guia || "PENDIENTE").setHorizontalAlignment("left");
+    else if (rowText.includes("NAME")) sheet.getRange(filaActual, 2).setValue(finalName).setHorizontalAlignment("left");
+    else if (rowText.includes("TEL")) sheet.getRange(filaActual, 2).setValue(finalTel).setHorizontalAlignment("left");
+    else if (rowText.includes("CONTENT")) {
+      startRow = filaActual + 1;
+    }
+    else if (rowText.includes("ADDRESS")) {
+      sheet.getRange(filaActual, 2).setValue(lineas[0]).setHorizontalAlignment("left");
+      if (lineas[1] !== "") {
+        sheet.getRange(filaActual + 1, 2).setValue(lineas[1]).setHorizontalAlignment("left");
       }
-      else if (rowText.includes("ADDRESS")) {
-          sheet.getRange(filaActual, 2).setValue(lineas[0]).setHorizontalAlignment("left"); 
-          if (lineas[1] !== "") {
-              sheet.getRange(filaActual + 1, 2).setValue(lineas[1]).setHorizontalAlignment("left");
-          }
-      }
+    }
   }
 
   if (startRow === -1) startRow = Number(sheet.getLastRow()) + 2;
 
   // --- 4. LLENAR CONTENIDO ---
-  let r = Number(startRow); 
+  let r = Number(startRow);
 
   for (let key in grupos) {
-      let g = grupos[key];
-      sheet.getRange(r, 1).setValue("Product: Experimental Samples With No Commercial Value").setFontWeight("bold");
-      r++;
+    let g = grupos[key];
+    sheet.getRange(r, 1).setValue("Product: Experimental Samples With No Commercial Value").setFontWeight("bold");
+    r++;
 
-      let linea2 = "Packing: ON " + g.piezas + " HDPE CONTAINERS WITH " + g.volumenUnitario + " NET " + g.unidad + " EACH ONE.";
-      let richText = SpreadsheetApp.newRichTextValue()
-          .setText(linea2)
-          .setTextStyle(0, 8, SpreadsheetApp.newTextStyle().setBold(true).build()) 
-          .build();
+    let linea2 = "Packing: ON " + g.piezas + " HDPE CONTAINERS WITH " + g.volumenUnitario + " NET " + g.unidad + " EACH ONE.";
+    let richText = SpreadsheetApp.newRichTextValue()
+      .setText(linea2)
+      .setTextStyle(0, 8, SpreadsheetApp.newTextStyle().setBold(true).build())
+      .build();
 
-      sheet.getRange(r, 1).setRichTextValue(richText);
-      r += 2; 
+    sheet.getRange(r, 1).setRichTextValue(richText);
+    r += 2;
   }
 
   // --- ESCRIBIR Y FORMATEAR EL TOTAL ---
   sheet.getRange(r, 1).setValue("TOTAL: " + totalPiezas + " HDPE CONTAINERS").setFontWeight("bold");
-  
+
   // MAGIA: Clonamos el formato exacto (color y bordes) de la celda de CONTENT a la fila de TOTAL
   let cellContent = sheet.getRange(Number(startRow) - 1, 1);
   cellContent.copyFormatToRange(sheet, 1, 2, r, r); // Lo pega en la Columna 1 y 2 de la fila 'r'
-  
+
   r += 2;
   sheet.getRange(r, 1).setValue("TOTAL WEIGHT: " + pesoTotalKg.toFixed(2) + " KG").setFontWeight("bold");
 
   SpreadsheetApp.flush();
-  Utilities.sleep(2000); 
+  Utilities.sleep(2000);
 
   // --- 5. GUARDAR PDF Y OCULTAR SHEET EDITABLE ---
   let pdfBlob = tempSS.getAs(MimeType.PDF).setName(docName + ".pdf");
@@ -3915,9 +3915,9 @@ function generarPackingListPDF(idPedido, datosPedido, items, folder) {
   let subfolders = folder.getFoldersByName("Editables");
   let editablesFolder;
   if (subfolders.hasNext()) {
-      editablesFolder = subfolders.next();
+    editablesFolder = subfolders.next();
   } else {
-      editablesFolder = folder.createFolder("Editables");
+    editablesFolder = folder.createFolder("Editables");
   }
 
   // Movemos el Excel a la subcarpeta oculta
@@ -3931,27 +3931,27 @@ function generarPackingListPDF(idPedido, datosPedido, items, folder) {
 // ==========================================
 
 function obtenerSiguienteFacturaProforma(nombreEmpresa, linkCarpeta = "") {
-    let sHistorial = obtenerHojaOCrear("HISTORIAL_FACTURAS", ["NO_FACTURA", "FECHA", "EMPRESA", "LINK_CARPETA"]);
-    let data = sHistorial.getDataRange().getValues();
-    
-    let year = new Date().getFullYear();
-    let nextNum = 1;
-    
-    // Si hay datos, leemos el último
-    if (data.length > 1) {
-        let lastFactura = String(data[data.length - 1][0]).trim();
-        let parts = lastFactura.split("-");
-        if (parts.length === 3 && parts[2] == year) {
-            nextNum = parseInt(parts[1], 10) + 1;
-        }
+  let sHistorial = obtenerHojaOCrear("HISTORIAL_FACTURAS", ["NO_FACTURA", "FECHA", "EMPRESA", "LINK_CARPETA"]);
+  let data = sHistorial.getDataRange().getValues();
+
+  let year = new Date().getFullYear();
+  let nextNum = 1;
+
+  // Si hay datos, leemos el último
+  if (data.length > 1) {
+    let lastFactura = String(data[data.length - 1][0]).trim();
+    let parts = lastFactura.split("-");
+    if (parts.length === 3 && parts[2] == year) {
+      nextNum = parseInt(parts[1], 10) + 1;
     }
-    
-    let nextFacturaStr = `PQ-${nextNum.toString().padStart(2, '0')}-${year}`;
-    
-    // Registramos en el historial junto con el enlace a Drive
-    sHistorial.appendRow([nextFacturaStr, new Date(), nombreEmpresa, linkCarpeta]);
-    
-    return nextFacturaStr;
+  }
+
+  let nextFacturaStr = `PQ-${nextNum.toString().padStart(2, '0')}-${year}`;
+
+  // Registramos en el historial junto con el enlace a Drive
+  sHistorial.appendRow([nextFacturaStr, new Date(), nombreEmpresa, linkCarpeta]);
+
+  return nextFacturaStr;
 }
 
 // ==========================================
@@ -3959,435 +3959,435 @@ function obtenerSiguienteFacturaProforma(nombreEmpresa, linkCarpeta = "") {
 // ==========================================
 
 function generarAmbasProformas(idPedido, datosPedido, items, folder, folioAsignado = null) {
-    let empresa = String(datosPedido.empresa || "").toUpperCase().trim();
-    let contacto = String(datosPedido.nombreCliente || "").toUpperCase().trim();
-    let nombreCompany = empresa ? empresa : contacto;
-    
-    // Si viene inyectado lo usamos, si no, sacamos uno nuevo
-    let numeroFactura = folioAsignado ? folioAsignado : obtenerSiguienteFacturaProforma(nombreCompany);
-    
-    crearDocumentoProforma(idPedido, datosPedido, items, folder, "ADUANA", numeroFactura, nombreCompany, contacto);
-    crearDocumentoProforma(idPedido, datosPedido, items, folder, "CLIENTE", numeroFactura, nombreCompany, contacto);
+  let empresa = String(datosPedido.empresa || "").toUpperCase().trim();
+  let contacto = String(datosPedido.nombreCliente || "").toUpperCase().trim();
+  let nombreCompany = empresa ? empresa : contacto;
+
+  // Si viene inyectado lo usamos, si no, sacamos uno nuevo
+  let numeroFactura = folioAsignado ? folioAsignado : obtenerSiguienteFacturaProforma(nombreCompany);
+
+  crearDocumentoProforma(idPedido, datosPedido, items, folder, "ADUANA", numeroFactura, nombreCompany, contacto);
+  crearDocumentoProforma(idPedido, datosPedido, items, folder, "CLIENTE", numeroFactura, nombreCompany, contacto);
 }
 
 
 // Función para cortar direcciones largas de forma inteligente
 function dividirTextoInteligente(texto, limite) {
-    if (!texto) return ["", ""];
-    let txt = String(texto).trim();
-    if (txt.length <= limite) return [txt, ""];
+  if (!texto) return ["", ""];
+  let txt = String(texto).trim();
+  if (txt.length <= limite) return [txt, ""];
 
-    // Buscamos el siguiente espacio o coma hacia adelante
-    let nextIdx = txt.substring(limite).search(/[\s,]/);
-    let distForward = nextIdx === -1 ? Infinity : nextIdx;
+  // Buscamos el siguiente espacio o coma hacia adelante
+  let nextIdx = txt.substring(limite).search(/[\s,]/);
+  let distForward = nextIdx === -1 ? Infinity : nextIdx;
 
-    // Buscamos el último espacio o coma hacia atrás
-    let prevStr = txt.substring(0, limite);
-    let prevIdx = Math.max(prevStr.lastIndexOf(" "), prevStr.lastIndexOf(","));
-    let distBackward = prevIdx === -1 ? Infinity : (limite - prevIdx);
+  // Buscamos el último espacio o coma hacia atrás
+  let prevStr = txt.substring(0, limite);
+  let prevIdx = Math.max(prevStr.lastIndexOf(" "), prevStr.lastIndexOf(","));
+  let distBackward = prevIdx === -1 ? Infinity : (limite - prevIdx);
 
-    let cutPos = limite;
-    
-    // Evaluamos la regla de pesos que diseñaste
-    if (distForward === Infinity && distBackward === Infinity) {
-        cutPos = limite; // Corte bruto si es una sola palabra gigante
-    } else if (distForward <= distBackward) {
-        cutPos = limite + distForward; // Cortamos después de la palabra
-    } else {
-        cutPos = prevIdx; // Cortamos antes de la palabra
-    }
+  let cutPos = limite;
 
-    let linea1 = txt.substring(0, cutPos).trim();
-    let linea2 = txt.substring(cutPos).replace(/^[, ]+/, '').trim(); // Limpiamos comas o espacios al inicio
+  // Evaluamos la regla de pesos que diseñaste
+  if (distForward === Infinity && distBackward === Infinity) {
+    cutPos = limite; // Corte bruto si es una sola palabra gigante
+  } else if (distForward <= distBackward) {
+    cutPos = limite + distForward; // Cortamos después de la palabra
+  } else {
+    cutPos = prevIdx; // Cortamos antes de la palabra
+  }
 
-    return [linea1, linea2];
+  let linea1 = txt.substring(0, cutPos).trim();
+  let linea2 = txt.substring(cutPos).replace(/^[, ]+/, '').trim(); // Limpiamos comas o espacios al inicio
+
+  return [linea1, linea2];
 }
 
 function crearDocumentoProforma(idPedido, datosPedido, items, folder, tipoProforma, numeroFactura, nombreCompany, contacto) {
-    const sTemplate = obtenerHojaSegura("TEMPLATE_PROFORMA_PQ");
-    if (!sTemplate) throw new Error("No existe la plantilla TEMPLATE_PROFORMA_PQ en la base de datos.");
-    
-    // --- 1. AGRUPACIÓN (Aduanas vs Cliente) ---
-    let grupos = {};
-    let totalPiezasGlobal = 0;
-    let pesoTotalNeto = 0;
+  const sTemplate = obtenerHojaSegura("TEMPLATE_PROFORMA_PQ");
+  if (!sTemplate) throw new Error("No existe la plantilla TEMPLATE_PROFORMA_PQ en la base de datos.");
 
-    items.forEach(function(item) {
-        let volUnitario = 1;
-        let match = String(item.nombre_presentacion).match(/[\d\.]+/);
-        if (match) volUnitario = parseFloat(match[0]);
-        let uni = String(item.unidad_medida).toUpperCase();
+  // --- 1. AGRUPACIÓN (Aduanas vs Cliente) ---
+  let grupos = {};
+  let totalPiezasGlobal = 0;
+  let pesoTotalNeto = 0;
 
-        let key = "";
-        let descripcionFinal = "";
+  items.forEach(function (item) {
+    let volUnitario = 1;
+    let match = String(item.nombre_presentacion).match(/[\d\.]+/);
+    if (match) volUnitario = parseFloat(match[0]);
+    let uni = String(item.unidad_medida).toUpperCase();
 
-        if (tipoProforma === "ADUANA") {
-            key = volUnitario + "_" + uni;
-            descripcionFinal = "Experimental samples with no commercial value";
-        } else {
-            // PROFORMA CLIENTE: Limpiamos nombre e inyectamos el LOTE
-            let rawName = String(item.nombre_producto).toUpperCase();
-            let cleanName = rawName.replace(/\s*\([^)]*\)/g, '').trim(); 
-            let lote = String(item.lote || "S/N").toUpperCase();
-            
-            // Agrupamos por producto y por lote para que no se mezclen lotes distintos
-            key = cleanName + "_" + lote + "_" + volUnitario + "_" + uni;
-            descripcionFinal = cleanName + " | LOTE: " + lote;
-        }
+    let key = "";
+    let descripcionFinal = "";
 
-        if (!grupos[key]) {
-            grupos[key] = { desc: descripcionFinal, volumenUnitario: volUnitario, unidad: uni, piezas: 0 };
-        }
-        
-        let pzas = Number(item.piezas) || 0;
-        grupos[key].piezas += pzas;
-        totalPiezasGlobal += pzas;
-        pesoTotalNeto += (pzas * volUnitario);
-    });
+    if (tipoProforma === "ADUANA") {
+      key = volUnitario + "_" + uni;
+      descripcionFinal = "Experimental samples with no commercial value";
+    } else {
+      // PROFORMA CLIENTE: Limpiamos nombre e inyectamos el LOTE
+      let rawName = String(item.nombre_producto).toUpperCase();
+      let cleanName = rawName.replace(/\s*\([^)]*\)/g, '').trim();
+      let lote = String(item.lote || "S/N").toUpperCase();
 
-    let valorUnitarioUSD = 1 / totalPiezasGlobal;
-
-// --- 2. NOMBRES DE ARCHIVO E INVERSIÓN DE ROLES ---
-    let clnDest = nombreCompany.replace(/[^A-Z0-9]/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "");
-    let docName = `PROF_${tipoProforma}_${clnDest}_${numeroFactura.replace(/-/g, "")}`;
-    
-    let tempSS = SpreadsheetApp.create(docName);
-    let newSheet = sTemplate.copyTo(tempSS);
-    newSheet.setName("Proforma_" + tipoProforma);
-    newSheet.showSheet(); 
-    tempSS.deleteSheet(tempSS.getSheets()[0]);
-    let sheet = tempSS.getSheetByName("Proforma_" + tipoProforma);
-
-    // 🔥 LA MAGIA DE LA INVERSIÓN (PROFORMA) 🔥
-    let esRecepcion = (datosPedido.rol === "Recibimos");
-    let finalSendTo = esRecepcion ? "POLAQUIMIA S.A. DE C.V. (ATTN: YAIR JUAREZ)" : ((nombreCompany !== contacto) ? (nombreCompany + " (ATTN: " + contacto + ")") : contacto);
-    let finalTel = esRecepcion ? "5579784490" : (datosPedido.telefono || "N/A");
-    let finalEmail = esRecepcion ? "yair.juarez@polakgrupo.com" : (datosPedido.email || "N/A");
-    let finalPais = esRecepcion ? "MEXICO" : String(datosPedido.pais || "NO ESPECIFICADO").toUpperCase();
-    
-    let pDirFull = "AZAHARES 26 COL. SANTA MARIA INSURGENTES, CUAUHTEMOC C.P. 06430 CIUDAD DE MEXICO, MEXICO";
-    let dirToProcess = esRecepcion ? pDirFull : String(datosPedido.direccion).toUpperCase();
-    let lineas = dividirTextoInteligente(dirToProcess, 85); 
-
-    // --- 3. RASTREO Y LLENADO DE CABECERAS ---
-    let data = sheet.getDataRange().getValues();
-    let startRow = -1;
-    let rowTotales = -1;
-
-    for (let r = 0; r < data.length; r++) {
-        for (let c = 0; c < data[r].length; c++) {
-            let txt = String(data[r][c]).toUpperCase().trim();
-            if (!txt) continue;
-
-            if (txt === "ARTICLE") startRow = r + 2;
-            if (txt.includes("TOTAL NET QUANTITY") || txt.includes("TOTAL NET WEIGHT")) rowTotales = r + 2;
-
-            if (txt === "DATE:") sheet.getRange(r + 1, 2).setValue(new Date());
-            else if (txt.includes("INVOICE LETTER")) sheet.getRange(r + 1, 6).setValue(numeroFactura).setFontWeight("bold");
-            else if (txt.includes("GUIDE NUMBER")) sheet.getRange(r + 1, 10).setValue(datosPedido.guia || "PENDIENTE");
-            else if (txt === "SEND TO:") sheet.getRange(r + 1, 2).setValue(finalSendTo);
-            else if (txt === "EMAIL:") sheet.getRange(r + 1, 2).setValue(finalEmail);
-            else if (txt === "TEL:") sheet.getRange(r + 1, 2).setValue(finalTel);
-            else if (txt.includes("DESTINATION COUNTRY")) sheet.getRange(r + 1, 4).setValue(finalPais);
-            else if (txt === "ADRESS:" || txt === "ADDRESS:") {
-                sheet.getRange(r + 1, 2).setValue(lineas[0]);
-                if (lineas[1] !== "") sheet.getRange(r + 2, 2).setValue(lineas[1]);
-            }
-        }
+      // Agrupamos por producto y por lote para que no se mezclen lotes distintos
+      key = cleanName + "_" + lote + "_" + volUnitario + "_" + uni;
+      descripcionFinal = cleanName + " | LOTE: " + lote;
     }
 
-    if (startRow === -1) startRow = 24; 
-
-    // --- 4. LLENAR LA TABLA (EXACTAMENTE 10 COLUMNAS) ---
-    let rowActual = startRow;
-    let index = 1;
-    
-    for (let key in grupos) {
-        let g = grupos[key];
-        let subtotalFila = g.piezas * valorUnitarioUSD;
-        let pesoTotalFila = g.piezas * g.volumenUnitario;
-        
-        sheet.getRange(rowActual, 1).setValue(index).setHorizontalAlignment("center");
-        sheet.getRange(rowActual, 2).setValue(g.desc).setHorizontalAlignment("left"); 
-        sheet.getRange(rowActual, 6).setValue(g.piezas).setHorizontalAlignment("center"); 
-        sheet.getRange(rowActual, 7).setValue(g.volumenUnitario.toFixed(3)).setHorizontalAlignment("center"); 
-        sheet.getRange(rowActual, 8).setValue(pesoTotalFila.toFixed(3)).setHorizontalAlignment("center"); 
-        sheet.getRange(rowActual, 9).setValue(valorUnitarioUSD.toFixed(3)).setHorizontalAlignment("center"); 
-        sheet.getRange(rowActual, 10).setValue(subtotalFila.toFixed(3)).setHorizontalAlignment("center"); 
-        
-        rowActual++;
-        index++;
+    if (!grupos[key]) {
+      grupos[key] = { desc: descripcionFinal, volumenUnitario: volUnitario, unidad: uni, piezas: 0 };
     }
 
-    // --- 5. LLENAR TOTALES ---
-    if (rowTotales > -1) {
-        sheet.getRange(rowTotales, 6).setValue(totalPiezasGlobal).setFontWeight("bold").setHorizontalAlignment("center");
-        sheet.getRange(rowTotales, 8).setValue(pesoTotalNeto.toFixed(3)).setFontWeight("bold").setHorizontalAlignment("center");
-        sheet.getRange(rowTotales, 10).setValue(1.00).setFontWeight("bold").setHorizontalAlignment("center");
+    let pzas = Number(item.piezas) || 0;
+    grupos[key].piezas += pzas;
+    totalPiezasGlobal += pzas;
+    pesoTotalNeto += (pzas * volUnitario);
+  });
+
+  let valorUnitarioUSD = 1 / totalPiezasGlobal;
+
+  // --- 2. NOMBRES DE ARCHIVO E INVERSIÓN DE ROLES ---
+  let clnDest = nombreCompany.replace(/[^A-Z0-9]/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "");
+  let docName = `PROF_${tipoProforma}_${clnDest}_${numeroFactura.replace(/-/g, "")}`;
+
+  let tempSS = SpreadsheetApp.create(docName);
+  let newSheet = sTemplate.copyTo(tempSS);
+  newSheet.setName("Proforma_" + tipoProforma);
+  newSheet.showSheet();
+  tempSS.deleteSheet(tempSS.getSheets()[0]);
+  let sheet = tempSS.getSheetByName("Proforma_" + tipoProforma);
+
+  // 🔥 LA MAGIA DE LA INVERSIÓN (PROFORMA) 🔥
+  let esRecepcion = (datosPedido.rol === "Recibimos");
+  let finalSendTo = esRecepcion ? "POLAQUIMIA S.A. DE C.V. (ATTN: YAIR JUAREZ)" : ((nombreCompany !== contacto) ? (nombreCompany + " (ATTN: " + contacto + ")") : contacto);
+  let finalTel = esRecepcion ? "5579784490" : (datosPedido.telefono || "N/A");
+  let finalEmail = esRecepcion ? "yair.juarez@polakgrupo.com" : (datosPedido.email || "N/A");
+  let finalPais = esRecepcion ? "MEXICO" : String(datosPedido.pais || "NO ESPECIFICADO").toUpperCase();
+
+  let pDirFull = "AZAHARES 26 COL. SANTA MARIA INSURGENTES, CUAUHTEMOC C.P. 06430 CIUDAD DE MEXICO, MEXICO";
+  let dirToProcess = esRecepcion ? pDirFull : String(datosPedido.direccion).toUpperCase();
+  let lineas = dividirTextoInteligente(dirToProcess, 85);
+
+  // --- 3. RASTREO Y LLENADO DE CABECERAS ---
+  let data = sheet.getDataRange().getValues();
+  let startRow = -1;
+  let rowTotales = -1;
+
+  for (let r = 0; r < data.length; r++) {
+    for (let c = 0; c < data[r].length; c++) {
+      let txt = String(data[r][c]).toUpperCase().trim();
+      if (!txt) continue;
+
+      if (txt === "ARTICLE") startRow = r + 2;
+      if (txt.includes("TOTAL NET QUANTITY") || txt.includes("TOTAL NET WEIGHT")) rowTotales = r + 2;
+
+      if (txt === "DATE:") sheet.getRange(r + 1, 2).setValue(new Date());
+      else if (txt.includes("INVOICE LETTER")) sheet.getRange(r + 1, 6).setValue(numeroFactura).setFontWeight("bold");
+      else if (txt.includes("GUIDE NUMBER")) sheet.getRange(r + 1, 10).setValue(datosPedido.guia || "PENDIENTE");
+      else if (txt === "SEND TO:") sheet.getRange(r + 1, 2).setValue(finalSendTo);
+      else if (txt === "EMAIL:") sheet.getRange(r + 1, 2).setValue(finalEmail);
+      else if (txt === "TEL:") sheet.getRange(r + 1, 2).setValue(finalTel);
+      else if (txt.includes("DESTINATION COUNTRY")) sheet.getRange(r + 1, 4).setValue(finalPais);
+      else if (txt === "ADRESS:" || txt === "ADDRESS:") {
+        sheet.getRange(r + 1, 2).setValue(lineas[0]);
+        if (lineas[1] !== "") sheet.getRange(r + 2, 2).setValue(lineas[1]);
+      }
     }
+  }
 
-    SpreadsheetApp.flush();
-    Utilities.sleep(3000); 
+  if (startRow === -1) startRow = 24;
 
-    // --- 6. GUARDAR PDF (MÉTODO NATIVO) ---
-    let pdfBlob = tempSS.getAs(MimeType.PDF).setName(docName + ".pdf");
-    folder.createFile(pdfBlob);
+  // --- 4. LLENAR LA TABLA (EXACTAMENTE 10 COLUMNAS) ---
+  let rowActual = startRow;
+  let index = 1;
 
-    let subfolders = folder.getFoldersByName("Editables");
-    let editablesFolder = subfolders.hasNext() ? subfolders.next() : folder.createFolder("Editables");
-    DriveApp.getFileById(tempSS.getId()).moveTo(editablesFolder);
+  for (let key in grupos) {
+    let g = grupos[key];
+    let subtotalFila = g.piezas * valorUnitarioUSD;
+    let pesoTotalFila = g.piezas * g.volumenUnitario;
+
+    sheet.getRange(rowActual, 1).setValue(index).setHorizontalAlignment("center");
+    sheet.getRange(rowActual, 2).setValue(g.desc).setHorizontalAlignment("left");
+    sheet.getRange(rowActual, 6).setValue(g.piezas).setHorizontalAlignment("center");
+    sheet.getRange(rowActual, 7).setValue(g.volumenUnitario.toFixed(3)).setHorizontalAlignment("center");
+    sheet.getRange(rowActual, 8).setValue(pesoTotalFila.toFixed(3)).setHorizontalAlignment("center");
+    sheet.getRange(rowActual, 9).setValue(valorUnitarioUSD.toFixed(3)).setHorizontalAlignment("center");
+    sheet.getRange(rowActual, 10).setValue(subtotalFila.toFixed(3)).setHorizontalAlignment("center");
+
+    rowActual++;
+    index++;
+  }
+
+  // --- 5. LLENAR TOTALES ---
+  if (rowTotales > -1) {
+    sheet.getRange(rowTotales, 6).setValue(totalPiezasGlobal).setFontWeight("bold").setHorizontalAlignment("center");
+    sheet.getRange(rowTotales, 8).setValue(pesoTotalNeto.toFixed(3)).setFontWeight("bold").setHorizontalAlignment("center");
+    sheet.getRange(rowTotales, 10).setValue(1.00).setFontWeight("bold").setHorizontalAlignment("center");
+  }
+
+  SpreadsheetApp.flush();
+  Utilities.sleep(3000);
+
+  // --- 6. GUARDAR PDF (MÉTODO NATIVO) ---
+  let pdfBlob = tempSS.getAs(MimeType.PDF).setName(docName + ".pdf");
+  folder.createFile(pdfBlob);
+
+  let subfolders = folder.getFoldersByName("Editables");
+  let editablesFolder = subfolders.hasNext() ? subfolders.next() : folder.createFolder("Editables");
+  DriveApp.getFileById(tempSS.getId()).moveTo(editablesFolder);
 }
 
 // ==========================================
 // ELIMINACIÓN PERMANENTE DE PEDIDOS (ADMIN)
 // ==========================================
 function eliminarPedidoDefinitivo(idPedido) {
-    const lock = LockService.getScriptLock();
-    try {
-        lock.waitLock(10000);
-        verificarAccesoServidor();
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(10000);
+    verificarAccesoServidor();
 
-        // 1. Doble validación de seguridad (Solo Admin)
-        const emailUsuario = Session.getActiveUser().getEmail().toLowerCase();
-        const rawSessions = PropertiesService.getScriptProperties().getProperty("ACTIVE_SESSIONS");
-        if (rawSessions) {
-            let sessions = JSON.parse(rawSessions);
-            if (sessions[emailUsuario] && sessions[emailUsuario].rol !== "admin") {
-                throw new Error("🔒 SEGURIDAD: Solo un Administrador puede eliminar pedidos permanentemente.");
-            }
-        }
-
-        // 2. Borrar de PEDIDOS y capturar enlace de Drive
-        const sPed = obtenerHojaSegura("PEDIDOS");
-        const dataPed = sPed.getDataRange().getValues();
-        let linkCarpeta = "";
-        for (let i = dataPed.length - 1; i >= 1; i--) { // Recorremos de abajo hacia arriba para borrar
-            if (String(dataPed[i][0]).trim() === String(idPedido).trim()) {
-                linkCarpeta = dataPed[i][13]; // Columna N tiene el enlace de Drive
-                sPed.deleteRow(i + 1);
-                break;
-            }
-        }
-
-        // 3. Borrar de DETALLE_PEDIDOS
-        const sDet = obtenerHojaSegura("DETALLE_PEDIDOS");
-        const dataDet = sDet.getDataRange().getValues();
-        for (let i = dataDet.length - 1; i >= 1; i--) {
-            if (String(dataDet[i][0]).trim() === String(idPedido).trim()) {
-                sDet.deleteRow(i + 1);
-            }
-        }
-
-        // 4. Mover la carpeta de Drive a la papelera (Limpieza profunda)
-        if (linkCarpeta && String(linkCarpeta).includes("drive.google.com")) {
-            try {
-                let folderId = String(linkCarpeta).split("/").pop().split("?")[0];
-                DriveApp.getFolderById(folderId).setTrashed(true);
-            } catch(e) {
-                console.log("No se pudo mandar a papelera la carpeta: " + e.message);
-            }
-        }
-
-        return { success: true };
-    } catch (e) {
-        return { success: false, error: e.message };
-    } finally {
-        lock.releaseLock();
+    // 1. Doble validación de seguridad (Solo Admin)
+    const emailUsuario = Session.getActiveUser().getEmail().toLowerCase();
+    const rawSessions = PropertiesService.getScriptProperties().getProperty("ACTIVE_SESSIONS");
+    if (rawSessions) {
+      let sessions = JSON.parse(rawSessions);
+      if (sessions[emailUsuario] && sessions[emailUsuario].rol !== "admin") {
+        throw new Error("🔒 SEGURIDAD: Solo un Administrador puede eliminar pedidos permanentemente.");
+      }
     }
+
+    // 2. Borrar de PEDIDOS y capturar enlace de Drive
+    const sPed = obtenerHojaSegura("PEDIDOS");
+    const dataPed = sPed.getDataRange().getValues();
+    let linkCarpeta = "";
+    for (let i = dataPed.length - 1; i >= 1; i--) { // Recorremos de abajo hacia arriba para borrar
+      if (String(dataPed[i][0]).trim() === String(idPedido).trim()) {
+        linkCarpeta = dataPed[i][13]; // Columna N tiene el enlace de Drive
+        sPed.deleteRow(i + 1);
+        break;
+      }
+    }
+
+    // 3. Borrar de DETALLE_PEDIDOS
+    const sDet = obtenerHojaSegura("DETALLE_PEDIDOS");
+    const dataDet = sDet.getDataRange().getValues();
+    for (let i = dataDet.length - 1; i >= 1; i--) {
+      if (String(dataDet[i][0]).trim() === String(idPedido).trim()) {
+        sDet.deleteRow(i + 1);
+      }
+    }
+
+    // 4. Mover la carpeta de Drive a la papelera (Limpieza profunda)
+    if (linkCarpeta && String(linkCarpeta).includes("drive.google.com")) {
+      try {
+        let folderId = String(linkCarpeta).split("/").pop().split("?")[0];
+        DriveApp.getFolderById(folderId).setTrashed(true);
+      } catch (e) {
+        console.log("No se pudo mandar a papelera la carpeta: " + e.message);
+      }
+    }
+
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: e.message };
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 // ==========================================
 // MODO FANTASMA: VISTA PREVIA FEDEX
 // ==========================================
 function generarVistaPreviaFedex(datosPedido, items) {
-    const lock = LockService.getScriptLock();
-    try {
-        lock.waitLock(15000);
-        // Creamos la factura indicando que ES UNA VISTA PREVIA (isPreview = true)
-        let pdfBase64 = generarCommercialInvoicePDF("PREVIEW-001", datosPedido, items, null, true);
-        return pdfBase64;
-    } catch (e) {
-        throw new Error(e.message);
-    } finally {
-        lock.releaseLock();
-    }
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(15000);
+    // Creamos la factura indicando que ES UNA VISTA PREVIA (isPreview = true)
+    let pdfBase64 = generarCommercialInvoicePDF("PREVIEW-001", datosPedido, items, null, true);
+    return pdfBase64;
+  } catch (e) {
+    throw new Error(e.message);
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 // ==========================================
 // MOTOR COMMERCIAL INVOICE (FEDEX)
 // ==========================================
 function generarCommercialInvoicePDF(idPedido, datosPedido, items, folder, isPreview = false, folioAsignado = null) {
-    const idProdDB = "1zCxn5Cvuvfs29Hbpp58W6VCvV6AczGMG1o7CkhS8d2E";
-    let ssProd;
-    try { ssProd = SpreadsheetApp.openById(idProdDB); } 
-    catch(err) { throw new Error("No se pudo conectar a la base de datos de Producción."); }
-    
-    const sTemplate = ssProd.getSheetByName("TEMPLATE_CIF_PQ");
-    if (!sTemplate) throw new Error("No existe la plantilla TEMPLATE_CIF_PQ en Producción.");
+  const idProdDB = "1zCxn5Cvuvfs29Hbpp58W6VCvV6AczGMG1o7CkhS8d2E";
+  let ssProd;
+  try { ssProd = SpreadsheetApp.openById(idProdDB); }
+  catch (err) { throw new Error("No se pudo conectar a la base de datos de Producción."); }
 
-    // --- 1. AGRUPACIÓN Y MATEMÁTICAS ---
-    let grupos = {};
-    let totalPiezasGlobal = 0;
-    let pesoTotalNeto = 0;
+  const sTemplate = ssProd.getSheetByName("TEMPLATE_CIF_PQ");
+  if (!sTemplate) throw new Error("No existe la plantilla TEMPLATE_CIF_PQ en Producción.");
 
-    items.forEach(function(item) {
-        let volUnitario = 1;
-        let match = String(item.nombre_presentacion).match(/[\d\.]+/);
-        if (match) volUnitario = parseFloat(match[0]);
-        
-        let pzas = Number(item.piezas) || 0;
-        let key = "EXP_SAMPLE_" + volUnitario;
+  // --- 1. AGRUPACIÓN Y MATEMÁTICAS ---
+  let grupos = {};
+  let totalPiezasGlobal = 0;
+  let pesoTotalNeto = 0;
 
-        if (!grupos[key]) {
-            grupos[key] = { desc: "Experimental samples", volumenUnitario: volUnitario, piezas: 0 };
-        }
-        grupos[key].piezas += pzas;
-        totalPiezasGlobal += pzas;
-        pesoTotalNeto += (pzas * volUnitario);
-    });
+  items.forEach(function (item) {
+    let volUnitario = 1;
+    let match = String(item.nombre_presentacion).match(/[\d\.]+/);
+    if (match) volUnitario = parseFloat(match[0]);
 
-    let valorUnitarioUSD = 1 / totalPiezasGlobal;
+    let pzas = Number(item.piezas) || 0;
+    let key = "EXP_SAMPLE_" + volUnitario;
 
-    // --- 2. INTELIGENCIA DE DIRECCIÓN (CLIENTE) ---
-    let dirCompleta = String(datosPedido.direccion || "").toUpperCase().trim();
-    let indiceNota = dirCompleta.indexOf("NOTA");
-    if (indiceNota !== -1) {
-        dirCompleta = dirCompleta.substring(0, indiceNota).trim().replace(/[,.-]+$/, "").trim(); 
+    if (!grupos[key]) {
+      grupos[key] = { desc: "Experimental samples", volumenUnitario: volUnitario, piezas: 0 };
     }
-    
-    let primerCorte = dividirTextoInteligente(dirCompleta, 40);
-    let fAd1 = primerCorte[0];
-    let segundoCorte = dividirTextoInteligente(primerCorte[1], 40);
-    let fAd2 = segundoCorte[0];
-    let fAd3 = segundoCorte[1]; 
+    grupos[key].piezas += pzas;
+    totalPiezasGlobal += pzas;
+    pesoTotalNeto += (pzas * volUnitario);
+  });
 
-    let fCia = String(datosPedido.empresa || "").toUpperCase().trim();
-    let fNom = String(datosPedido.nombreCliente || "").toUpperCase().trim();
-    let nombreCompany = fCia ? fCia : fNom;
-    fCia = nombreCompany;
-    let fLoc = String(datosPedido.pais || "NO ESPECIFICADO").toUpperCase();
-    let fTel = datosPedido.telefono || "N/A";
-    let fEma = datosPedido.email || "N/A";
+  let valorUnitarioUSD = 1 / totalPiezasGlobal;
 
-    // --- DATOS FIJOS POLAQUIMIA ---
-    const POLAK = {
-        cia: "Dr. Jose Polak S.A. de C.V.",
-        ad1: "Azahares 26",
-        ad2: "Col. Santa Maria Insurgentes",
-        ad3: "Cuauhtemoc C.P. 06430",
-        loc: "Ciudad de Mexico, Mexico",
-        nom: "Yair Juarez Gonzalez",
-        tel: "5579784490",
-        ema: "yair.juarez@polakgrupo.com"
-    };
+  // --- 2. INTELIGENCIA DE DIRECCIÓN (CLIENTE) ---
+  let dirCompleta = String(datosPedido.direccion || "").toUpperCase().trim();
+  let indiceNota = dirCompleta.indexOf("NOTA");
+  if (indiceNota !== -1) {
+    dirCompleta = dirCompleta.substring(0, indiceNota).trim().replace(/[,.-]+$/, "").trim();
+  }
 
-    let numeroFactura = isPreview ? "PREVIEW-2026" : (folioAsignado ? folioAsignado : obtenerSiguienteFacturaProforma(nombreCompany));
-    let docName = `CIFEDEX_${nombreCompany.replace(/[^A-Z0-9]/g, "_")}_${numeroFactura}`;
-    
-    let tempSS = SpreadsheetApp.create(docName);
-    let newSheet = sTemplate.copyTo(tempSS);
-    newSheet.setName("CommercialInvoice");
-    newSheet.showSheet(); 
-    tempSS.deleteSheet(tempSS.getSheets()[0]); 
-    let sheet = tempSS.getSheetByName("CommercialInvoice");
+  let primerCorte = dividirTextoInteligente(dirCompleta, 40);
+  let fAd1 = primerCorte[0];
+  let segundoCorte = dividirTextoInteligente(primerCorte[1], 40);
+  let fAd2 = segundoCorte[0];
+  let fAd3 = segundoCorte[1];
 
-    // --- 3. LLENADO DE CABECERAS ---
-    sheet.getRange("H5").setValue(numeroFactura).setFontWeight("bold");
-    sheet.getRange("H9").setValue(datosPedido.guia || "PENDIENTE");
+  let fCia = String(datosPedido.empresa || "").toUpperCase().trim();
+  let fNom = String(datosPedido.nombreCliente || "").toUpperCase().trim();
+  let nombreCompany = fCia ? fCia : fNom;
+  fCia = nombreCompany;
+  let fLoc = String(datosPedido.pais || "NO ESPECIFICADO").toUpperCase();
+  let fTel = datosPedido.telefono || "N/A";
+  let fEma = datosPedido.email || "N/A";
 
-    // 🔥 LA MAGIA DE LA INVERSIÓN 🔥
-    let esRecepcion = (datosPedido.rol === "Recibimos");
+  // --- DATOS FIJOS POLAQUIMIA ---
+  const POLAK = {
+    cia: "Dr. Jose Polak S.A. de C.V.",
+    ad1: "Azahares 26",
+    ad2: "Col. Santa Maria Insurgentes",
+    ad3: "Cuauhtemoc C.P. 06430",
+    loc: "Ciudad de Mexico, Mexico",
+    nom: "Yair Juarez Gonzalez",
+    tel: "5579784490",
+    ema: "yair.juarez@polakgrupo.com"
+  };
 
-    if (esRecepcion) {
-        // Ellos Envían (Sender Arriba)
-        sheet.getRange("B5").setValue(fCia);
-        sheet.getRange("B7").setValue(fAd1);
-        sheet.getRange("B9").setValue(fAd2);
-        sheet.getRange("B11").setValue(fAd3);
-        sheet.getRange("B13").setValue(fLoc);
-        sheet.getRange("B15").setValue(fNom);
-        sheet.getRange("B17").setValue(fTel);
-        sheet.getRange("B19").setValue(fEma);
+  let numeroFactura = isPreview ? "PREVIEW-2026" : (folioAsignado ? folioAsignado : obtenerSiguienteFacturaProforma(nombreCompany));
+  let docName = `CIFEDEX_${nombreCompany.replace(/[^A-Z0-9]/g, "_")}_${numeroFactura}`;
 
-        // Nosotros Recibimos (Receiver Abajo)
-        sheet.getRange("B24").setValue(POLAK.cia);
-        sheet.getRange("B26").setValue(POLAK.ad1);
-        sheet.getRange("B28").setValue(POLAK.ad2);
-        sheet.getRange("B30").setValue(POLAK.ad3);
-        sheet.getRange("B32").setValue(POLAK.loc);
-        sheet.getRange("B34").setValue(POLAK.nom);
-        sheet.getRange("B36").setValue(POLAK.tel);
-        sheet.getRange("B38").setValue(POLAK.ema);
-    } else {
-        // Nosotros Enviamos (Sender Arriba - Restaura por si acaso)
-        sheet.getRange("B5").setValue(POLAK.cia);
-        sheet.getRange("B7").setValue(POLAK.ad1);
-        sheet.getRange("B9").setValue(POLAK.ad2);
-        sheet.getRange("B11").setValue(POLAK.ad3);
-        sheet.getRange("B13").setValue(POLAK.loc);
-        sheet.getRange("B15").setValue(POLAK.nom);
-        sheet.getRange("B17").setValue(POLAK.tel);
-        sheet.getRange("B19").setValue(POLAK.ema);
+  let tempSS = SpreadsheetApp.create(docName);
+  let newSheet = sTemplate.copyTo(tempSS);
+  newSheet.setName("CommercialInvoice");
+  newSheet.showSheet();
+  tempSS.deleteSheet(tempSS.getSheets()[0]);
+  let sheet = tempSS.getSheetByName("CommercialInvoice");
 
-        // Ellos Reciben (Receiver Abajo)
-        sheet.getRange("B24").setValue(fCia);
-        sheet.getRange("B26").setValue(fAd1);
-        sheet.getRange("B28").setValue(fAd2);
-        sheet.getRange("B30").setValue(fAd3); 
-        sheet.getRange("B32").setValue(fLoc);
-        sheet.getRange("B34").setValue(fNom);
-        sheet.getRange("B36").setValue(fTel);
-        sheet.getRange("B38").setValue(fEma);
+  // --- 3. LLENADO DE CABECERAS ---
+  sheet.getRange("H5").setValue(numeroFactura).setFontWeight("bold");
+  sheet.getRange("H9").setValue(datosPedido.guia || "PENDIENTE");
+
+  // 🔥 LA MAGIA DE LA INVERSIÓN 🔥
+  let esRecepcion = (datosPedido.rol === "Recibimos");
+
+  if (esRecepcion) {
+    // Ellos Envían (Sender Arriba)
+    sheet.getRange("B5").setValue(fCia);
+    sheet.getRange("B7").setValue(fAd1);
+    sheet.getRange("B9").setValue(fAd2);
+    sheet.getRange("B11").setValue(fAd3);
+    sheet.getRange("B13").setValue(fLoc);
+    sheet.getRange("B15").setValue(fNom);
+    sheet.getRange("B17").setValue(fTel);
+    sheet.getRange("B19").setValue(fEma);
+
+    // Nosotros Recibimos (Receiver Abajo)
+    sheet.getRange("B24").setValue(POLAK.cia);
+    sheet.getRange("B26").setValue(POLAK.ad1);
+    sheet.getRange("B28").setValue(POLAK.ad2);
+    sheet.getRange("B30").setValue(POLAK.ad3);
+    sheet.getRange("B32").setValue(POLAK.loc);
+    sheet.getRange("B34").setValue(POLAK.nom);
+    sheet.getRange("B36").setValue(POLAK.tel);
+    sheet.getRange("B38").setValue(POLAK.ema);
+  } else {
+    // Nosotros Enviamos (Sender Arriba - Restaura por si acaso)
+    sheet.getRange("B5").setValue(POLAK.cia);
+    sheet.getRange("B7").setValue(POLAK.ad1);
+    sheet.getRange("B9").setValue(POLAK.ad2);
+    sheet.getRange("B11").setValue(POLAK.ad3);
+    sheet.getRange("B13").setValue(POLAK.loc);
+    sheet.getRange("B15").setValue(POLAK.nom);
+    sheet.getRange("B17").setValue(POLAK.tel);
+    sheet.getRange("B19").setValue(POLAK.ema);
+
+    // Ellos Reciben (Receiver Abajo)
+    sheet.getRange("B24").setValue(fCia);
+    sheet.getRange("B26").setValue(fAd1);
+    sheet.getRange("B28").setValue(fAd2);
+    sheet.getRange("B30").setValue(fAd3);
+    sheet.getRange("B32").setValue(fLoc);
+    sheet.getRange("B34").setValue(fNom);
+    sheet.getRange("B36").setValue(fTel);
+    sheet.getRange("B38").setValue(fEma);
+  }
+
+  // --- 4. LLENAR TABLA DE ARTÍCULOS ---
+  let startRow = 42;
+  let rowActual = startRow;
+
+  for (let key in grupos) {
+    let g = grupos[key];
+    let subtotalFila = g.piezas * valorUnitarioUSD;
+    let pesoTotalFila = g.piezas * g.volumenUnitario;
+
+    sheet.getRange(rowActual, 1).setValue(g.desc).setHorizontalAlignment("left");
+    sheet.getRange(rowActual, 2).setValue(g.piezas).setHorizontalAlignment("center");
+    sheet.getRange(rowActual, 3).setValue(g.volumenUnitario.toFixed(3)).setHorizontalAlignment("center");
+    sheet.getRange(rowActual, 4).setValue(valorUnitarioUSD.toFixed(3)).setHorizontalAlignment("center");
+    sheet.getRange(rowActual, 7).setValue("").setHorizontalAlignment("center");
+    sheet.getRange(rowActual, 8).setValue("MEXICO").setHorizontalAlignment("center");
+    sheet.getRange(rowActual, 9).setValue(pesoTotalFila.toFixed(3)).setHorizontalAlignment("center");
+    sheet.getRange(rowActual, 10).setValue(subtotalFila.toFixed(3)).setHorizontalAlignment("center");
+
+    rowActual++;
+  }
+
+  // --- 5. TOTALES INFERIORES ---
+  let dataPost = sheet.getDataRange().getValues();
+  for (let r = startRow; r < dataPost.length; r++) {
+    let rowStr = dataPost[r].join(" ").toUpperCase();
+    if (rowStr.includes("NUMBER OF PACKAGES IN SHIPMENT")) {
+      let bultosManuales = Number(datosPedido.bultos) || 1;
+      sheet.getRange(r + 3, 2).setValue(bultosManuales).setHorizontalAlignment("center").setFontWeight("bold");
     }
+    if (rowStr.includes("TOTAL SHIPMENT VALUE:")) sheet.getRange(r + 1, 10).setValue(1.00).setFontWeight("bold");
+    if (rowStr.includes("TOTAL DECLARED VALUE:")) sheet.getRange(r + 1, 10).setValue(1.00).setFontWeight("bold");
+  }
 
-    // --- 4. LLENAR TABLA DE ARTÍCULOS ---
-    let startRow = 42; 
-    let rowActual = startRow;
-    
-    for (let key in grupos) {
-        let g = grupos[key];
-        let subtotalFila = g.piezas * valorUnitarioUSD;
-        let pesoTotalFila = g.piezas * g.volumenUnitario;
-        
-        sheet.getRange(rowActual, 1).setValue(g.desc).setHorizontalAlignment("left");
-        sheet.getRange(rowActual, 2).setValue(g.piezas).setHorizontalAlignment("center");
-        sheet.getRange(rowActual, 3).setValue(g.volumenUnitario.toFixed(3)).setHorizontalAlignment("center");
-        sheet.getRange(rowActual, 4).setValue(valorUnitarioUSD.toFixed(3)).setHorizontalAlignment("center");
-        sheet.getRange(rowActual, 7).setValue("").setHorizontalAlignment("center");
-        sheet.getRange(rowActual, 8).setValue("MEXICO").setHorizontalAlignment("center");
-        sheet.getRange(rowActual, 9).setValue(pesoTotalFila.toFixed(3)).setHorizontalAlignment("center");
-        sheet.getRange(rowActual, 10).setValue(subtotalFila.toFixed(3)).setHorizontalAlignment("center");
-        
-        rowActual++;
-    }
+  SpreadsheetApp.flush();
+  Utilities.sleep(isPreview ? 1000 : 3000);
 
-    // --- 5. TOTALES INFERIORES ---
-    let dataPost = sheet.getDataRange().getValues();
-    for (let r = startRow; r < dataPost.length; r++) {
-        let rowStr = dataPost[r].join(" ").toUpperCase();
-        if (rowStr.includes("NUMBER OF PACKAGES IN SHIPMENT")) {
-            let bultosManuales = Number(datosPedido.bultos) || 1;
-            sheet.getRange(r + 3, 2).setValue(bultosManuales).setHorizontalAlignment("center").setFontWeight("bold");
-        }
-        if (rowStr.includes("TOTAL SHIPMENT VALUE:")) sheet.getRange(r + 1, 10).setValue(1.00).setFontWeight("bold");
-        if (rowStr.includes("TOTAL DECLARED VALUE:")) sheet.getRange(r + 1, 10).setValue(1.00).setFontWeight("bold");
-    }
-
-    SpreadsheetApp.flush();
-    Utilities.sleep(isPreview ? 1000 : 3000); 
-
-    let pdfBlob = tempSS.getAs(MimeType.PDF).setName(docName + ".pdf");
-    if (isPreview) {
-        let base64 = Utilities.base64Encode(pdfBlob.getBytes());
-        DriveApp.getFileById(tempSS.getId()).setTrashed(true);
-        return base64;
-    } else {
-        folder.createFile(pdfBlob);
-        let subfolders = folder.getFoldersByName("Editables");
-        let editablesFolder = subfolders.hasNext() ? subfolders.next() : folder.createFolder("Editables");
-        DriveApp.getFileById(tempSS.getId()).moveTo(editablesFolder);
-        return true;
-    }
+  let pdfBlob = tempSS.getAs(MimeType.PDF).setName(docName + ".pdf");
+  if (isPreview) {
+    let base64 = Utilities.base64Encode(pdfBlob.getBytes());
+    DriveApp.getFileById(tempSS.getId()).setTrashed(true);
+    return base64;
+  } else {
+    folder.createFile(pdfBlob);
+    let subfolders = folder.getFoldersByName("Editables");
+    let editablesFolder = subfolders.hasNext() ? subfolders.next() : folder.createFolder("Editables");
+    DriveApp.getFileById(tempSS.getId()).moveTo(editablesFolder);
+    return true;
+  }
 }
 
 // ==========================================
@@ -4398,40 +4398,40 @@ function generarDocumentosLibres(datosDoc, itemsCarrito) {
   try {
     lock.waitLock(30000);
     verificarAccesoServidor();
-    
+
     let empresa = String(datosDoc.empresa || "").toUpperCase().trim();
     let contacto = String(datosDoc.nombreCliente || "").toUpperCase().trim();
     let nombreCompany = empresa ? empresa : contacto;
-    
+
     let folderPadre;
     try {
       folderPadre = DriveApp.getFolderById(ID_CARPETA_PADRE_PEDIDOS);
     } catch (e) {
       throw new Error("No se encontró la carpeta principal en Drive.");
     }
-    
+
     let fechaStr = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd-MM-yyyy");
     let clnEmpresa = nombreCompany.replace(/[^A-Z0-9]/g, "_").replace(/_+/g, "_");
     let nombreCarpeta = `DOC_LIBRES_${clnEmpresa}_${fechaStr}`.toUpperCase();
-    
+
     let folderDestino = folderPadre.createFolder(nombreCarpeta);
     folderDestino.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
     let folderUrl = folderDestino.getUrl(); // 🔥 Obtenemos el link
-    
+
     // Generar Folio Único y anexar Link
     let folioUnico = null;
     if (datosDoc.generarProforma || datosDoc.generarCI) {
-        folioUnico = obtenerSiguienteFacturaProforma(nombreCompany, folderUrl);
+      folioUnico = obtenerSiguienteFacturaProforma(nombreCompany, folderUrl);
     } else if (datosDoc.generarPL) {
-        folioUnico = obtenerSiguienteFacturaProforma(nombreCompany + " (Solo PL)", folderUrl);
+      folioUnico = obtenerSiguienteFacturaProforma(nombreCompany + " (Solo PL)", folderUrl);
     }
-    
+
     if (datosDoc.generarPL) generarPackingListPDF("LIBRE", datosDoc, itemsCarrito, folderDestino);
     if (datosDoc.generarProforma) generarAmbasProformas("LIBRE", datosDoc, itemsCarrito, folderDestino, folioUnico);
     if (datosDoc.generarCI) generarCommercialInvoicePDF("LIBRE", datosDoc, itemsCarrito, folderDestino, false, folioUnico);
-    
+
     return { success: true, folio: folioUnico || "Carpeta Creada" };
-  } catch(e) {
+  } catch (e) {
     return { success: false, error: e.message };
   } finally {
     lock.releaseLock();
@@ -4439,34 +4439,34 @@ function generarDocumentosLibres(datosDoc, itemsCarrito) {
 }
 
 function obtenerHistorialFacturas() {
-    const lock = LockService.getScriptLock();
-    try {
-        lock.waitLock(10000);
-        verificarAccesoServidor();
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(10000);
+    verificarAccesoServidor();
 
-        let sHistorial = obtenerHojaSegura("HISTORIAL_FACTURAS");
-        if (!sHistorial || sHistorial.getLastRow() < 2) return [];
-        
-        let data = sHistorial.getDataRange().getDisplayValues();
-        let historial = [];
-        
-        let limite = Math.max(1, data.length - 100);
-        for (let i = data.length - 1; i >= limite; i--) {
-            if(data[i][0]) {
-                historial.push({
-                    folio: data[i][0],
-                    fecha: data[i][1],
-                    empresa: data[i][2],
-                    link: data[i][3] || "" // 🔥 Extraemos el link de la nueva columna D
-                });
-            }
-        }
-        return historial;
-    } catch(e) {
-        throw new Error(e.message);
-    } finally {
-        lock.releaseLock();
+    let sHistorial = obtenerHojaSegura("HISTORIAL_FACTURAS");
+    if (!sHistorial || sHistorial.getLastRow() < 2) return [];
+
+    let data = sHistorial.getDataRange().getDisplayValues();
+    let historial = [];
+
+    let limite = Math.max(1, data.length - 100);
+    for (let i = data.length - 1; i >= limite; i--) {
+      if (data[i][0]) {
+        historial.push({
+          folio: data[i][0],
+          fecha: data[i][1],
+          empresa: data[i][2],
+          link: data[i][3] || "" // 🔥 Extraemos el link de la nueva columna D
+        });
+      }
     }
+    return historial;
+  } catch (e) {
+    throw new Error(e.message);
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 
@@ -4474,61 +4474,61 @@ function obtenerHistorialFacturas() {
 // RESCATE DE DOCUMENTOS PENDIENTES
 // ==========================================
 function generarDocumentosPendientes(idPedido, opciones) {
-    const lock = LockService.getScriptLock();
-    try {
-        lock.waitLock(30000);
-        verificarAccesoServidor();
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(30000);
+    verificarAccesoServidor();
 
-        // 1. Traemos la radiografía completa del pedido
-        let detalle = obtenerDetallePedidoCompleto(idPedido);
-        let cab = detalle.cabecera;
-        let items = detalle.items;
+    // 1. Traemos la radiografía completa del pedido
+    let detalle = obtenerDetallePedidoCompleto(idPedido);
+    let cab = detalle.cabecera;
+    let items = detalle.items;
 
-        // 2. Guardamos la nueva guía en el historial de Pedidos
-        const sPed = obtenerHojaSegura("PEDIDOS");
-        const dPed = sPed.getDataRange().getValues();
-        for (let i = 1; i < dPed.length; i++) {
-            if (String(dPed[i][0]).trim() === String(idPedido).trim()) {
-                sPed.getRange(i + 1, 8).setValue(opciones.guia); // Columna H (Guía)
-                break;
-            }
-        }
-
-        // 3. Reconstruimos el objeto para engañar al generador de PDFs
-        let datosPedidoConstruidos = {
-            empresa: cab.empresa,
-            nombreCliente: cab.cliente,
-            telefono: cab.telefono,
-            email: cab.email,
-            direccion: cab.direccion,
-            pais: "NO ESPECIFICADO", // El motor extrae el país de la dirección inteligentemente
-            bultos: opciones.bultos || 1,
-            guia: opciones.guia,
-            rol: "Enviamos", 
-            generarProforma: opciones.proforma,
-            generarPL: opciones.pl,
-            generarCI: opciones.ci
-        };
-
-        // 4. Adaptamos los items al formato exacto
-        let itemsProcesar = items.map(i => ({
-            nombre_producto: i.producto,
-            nombre_presentacion: i.presentacion,
-            lote: i.lote,
-            volumen_L: i.volumen,
-            piezas: i.piezas,
-            unidad_medida: i.unidad
-        }));
-
-        // 5. ¡A imprimir!
-        generarDocumentosInternacionales(idPedido, datosPedidoConstruidos, itemsProcesar);
-
-        return { success: true };
-    } catch (e) {
-        return { success: false, error: e.message };
-    } finally {
-        lock.releaseLock();
+    // 2. Guardamos la nueva guía en el historial de Pedidos
+    const sPed = obtenerHojaSegura("PEDIDOS");
+    const dPed = sPed.getDataRange().getValues();
+    for (let i = 1; i < dPed.length; i++) {
+      if (String(dPed[i][0]).trim() === String(idPedido).trim()) {
+        sPed.getRange(i + 1, 8).setValue(opciones.guia); // Columna H (Guía)
+        break;
+      }
     }
+
+    // 3. Reconstruimos el objeto para engañar al generador de PDFs
+    let datosPedidoConstruidos = {
+      empresa: cab.empresa,
+      nombreCliente: cab.cliente,
+      telefono: cab.telefono,
+      email: cab.email,
+      direccion: cab.direccion,
+      pais: "NO ESPECIFICADO", // El motor extrae el país de la dirección inteligentemente
+      bultos: opciones.bultos || 1,
+      guia: opciones.guia,
+      rol: "Enviamos",
+      generarProforma: opciones.proforma,
+      generarPL: opciones.pl,
+      generarCI: opciones.ci
+    };
+
+    // 4. Adaptamos los items al formato exacto
+    let itemsProcesar = items.map(i => ({
+      nombre_producto: i.producto,
+      nombre_presentacion: i.presentacion,
+      lote: i.lote,
+      volumen_L: i.volumen,
+      piezas: i.piezas,
+      unidad_medida: i.unidad
+    }));
+
+    // 5. ¡A imprimir!
+    generarDocumentosInternacionales(idPedido, datosPedidoConstruidos, itemsProcesar);
+
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: e.message };
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 /**
@@ -4593,7 +4593,7 @@ function edicionMaestraLoteAdmin(datos) {
     let registrosCorregidosBitacora = 0;
     if (sEntradas && datos.corregirBitacoraEntrada === true) {
       const dataEnt = sEntradas.getRange(1, 1, sEntradas.getLastRow(), 7).getValues(); // Leemos hasta la columna G
-      
+
       // Buscamos de atrás hacia adelante para afectar el ingreso original más reciente de este lote exacto
       for (let k = dataEnt.length - 1; k > 0; k--) {
         if (
@@ -4604,7 +4604,7 @@ function edicionMaestraLoteAdmin(datos) {
         ) {
           let filaBitacoraIndex = k + 1;
           let cantidadOriginalIngresada = Number(dataEnt[k][4]) || 0; // Columna E (VOL)
-          
+
           // Recalculamos el historial sumando la diferencia del ajuste
           let nuevaCantidadHistorial = cantidadOriginalIngresada + diferenciaVolumen;
           if (nuevaCantidadHistorial < 0) nuevaCantidadHistorial = 0;
