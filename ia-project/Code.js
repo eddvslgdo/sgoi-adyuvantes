@@ -1,10 +1,11 @@
-const GEMINI_API_KEY = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY'); 
+const GEMINI_API_KEY =
+  PropertiesService.getScriptProperties().getProperty("GEMINI_API_KEY");
 
 function doGet() {
-  return HtmlService.createHtmlOutputFromFile('Index')
-      .setTitle('AgroSystem Suite | RAG Designer')
-      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
-      .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+  return HtmlService.createHtmlOutputFromFile("Index")
+    .setTitle("AgroSystem Suite | RAG Designer")
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+    .addMetaTag("viewport", "width=device-width, initial-scale=1");
 }
 
 /**
@@ -12,27 +13,27 @@ function doGet() {
  */
 function obtenerInventario() {
   try {
-    // ID de la hoja proporcionada
-    const libro = SpreadsheetApp.openById('1duNXyrgmefH09rgX_SlhaW0nuu7neETE4vvCg_A65qM');
-    const hoja = libro.getSheetByName('db_materia_prima');
-    
+    const libro = SpreadsheetApp.openById(
+      "1duNXyrgmefH09rgX_SlhaW0nuu7neETE4vvCg_A65qM",
+    );
+    const hoja = libro.getSheetByName("db_materia_prima");
+
     if (!hoja) throw new Error("No se encontró la pestaña 'db_materia_prima'.");
 
     const datos = hoja.getDataRange().getValues();
-    const encabezados = datos.shift(); // Saca la primera fila (títulos)
-    
-    // Convierte las filas en un arreglo de objetos JSON
-    const inventario = datos.map(fila => {
+    const encabezados = datos.shift();
+
+    const inventario = datos.map((fila) => {
       let obj = {};
       encabezados.forEach((titulo, index) => {
         if (titulo) obj[titulo.toString().trim()] = fila[index];
       });
       return obj;
     });
-    
+
     return inventario;
   } catch (e) {
-    throw new Error("Error al leer la base de datos de Sheets: " + e.message);
+    throw new Error("Error al leer Google Sheets: " + e.message);
   }
 }
 
@@ -44,17 +45,21 @@ function diseñarCoadyuvanteIA(datos) {
   try {
     lock.waitLock(25000);
 
-    if (!GEMINI_API_KEY) throw new Error("API KEY de Gemini no configurada.");
+    if (!GEMINI_API_KEY)
+      throw new Error(
+        "API KEY de Gemini no configurada en las Propiedades del Script.",
+      );
 
-    // 1. Obtener los materiales disponibles en tiempo real
+    // 1. Obtener los materiales disponibles
     const inventarioJSON = obtenerInventario();
     const inventarioTexto = JSON.stringify(inventarioJSON);
+    let matrizTexto = datos.matriz
+      .map((item) => `- ${item.funcionalidad}: Nivel ${item.potencia_deseada}`)
+      .join("\n");
 
-    let matrizTexto = datos.matriz.map(item => `- ${item.funcionalidad}: Nivel ${item.potencia_deseada}`).join("\n");
-
-    // 2. Prompt Experto inyectando el inventario
+// 2. Prompt Estratégico Nivel Experto (Arquitectura Comercial Dinámica)
     const promptEstrategico = `Eres el Director Científico Senior de Formulación Agrícola.
-Tu misión es diseñar un coadyuvante basado ESTRICTAMENTE en la siguiente base de datos de materias primas de nuestra empresa:
+Tu misión es diseñar un coadyuvante (PRODUCTO COMERCIAL TERMINADO).
 
 INVENTARIO DISPONIBLE (JSON):
 ${inventarioTexto}
@@ -62,34 +67,44 @@ ${inventarioTexto}
 REQUERIMIENTOS DEL CLIENTE:
 - Cultivos: ${datos.cultivos}
 - Plaguicida Acompañante: ${datos.plaguicidas}
-- Certificación: ${datos.organico}
-- Perfil de Desempeño Solicitado (Escala 1 al 4):
+- Certificación exigida: ${datos.organico}
+- Perfil de Desempeño Solicitado:
 ${matrizTexto}
 
-INSTRUCCIONES TÉCNICAS:
-1. Formula usando EXCLUSIVAMENTE los componentes del inventario proporcionado.
-2. Considera los valores de HLB, pH y Tensión Superficial provistos en la base de datos para justificar la compatibilidad física y el desempeño solicitado.
-3. Si la exigencia del cliente requiere una propiedad que NINGÚN componente del inventario actual puede satisfacer, indícalo en el campo "recomendacion_compras" proponiendo la familia química que deberíamos adquirir. Si el inventario es suficiente, deja ese campo vacío.
+INSTRUCCIONES TÉCNICAS ESTRICTAS Y OBLIGATORIAS:
+1. ECOSISTEMA COMERCIAL COMPLETO: Tu objetivo es entregar un producto final listo para venta. ESTÁ PROHIBIDO formular únicamente mezclando activos puros. SIEMPRE debes estructurar una arquitectura completa que incluya: Activos principales, Emulsificantes/Surfactantes, Acondicionadores de mezcla/Compatibilizantes, y OBLIGATORIAMENTE un Vehículo/Diluyente (ej. "Agua desionizada (C.S.P.)", SAP: N/A, u otro solvente) para completar el 100%.
+2. LÓGICA DE BALANCE DE MATERIA: No tienes límites numéricos predefinidos. Analiza internamente la compatibilidad fisicoquímica, interacciones estéricas, pH y HLB global para definir los porcentajes exactos. Si el producto requiere una carga activa alta o baja, justifícalo con base en la estabilidad termodinámica de la mezcla.
+3. PERFIL DE DESEMPEÑO REAL (EXTRAS): Evalúa la fórmula final. Determina su eficacia (1 al 4) para las funciones solicitadas y añade beneficios extra reales. ¡SÉ EXTREMADAMENTE CRÍTICO! Es químicamente imposible que una fórmula sea perfecta en todo. Califica con 1 (Malo) o 2 (Regular) lo que la fórmula no cubra eficientemente.
+4. REGLA OMRI Y EXTERNOS: Si se exige certificación orgánica y el inventario no tiene insumos viables, formula la mezcla ideal utilizando materias primas "EXTERNAS" del mercado global.
+5. SÍNTESIS, ESTABILIDAD Y PRUEBAS: Define el método de laboratorio paso a paso, pruebas CIPAC a 54°C/Frío, y evaluaciones fisicoquímicas adicionales.
 
 Devuelve EXCLUSIVAMENTE un JSON puro con esta estructura:
 {
   "dificultad": "Baja / Moderada / Crítica",
   "estabilidad_estimada": "Porcentaje (Ej: 95%)",
   "costo_relativo": "Económico / Estándar / Premium",
-  "evaluacion_tecnica": "Dictamen justificando matemáticamente la selección basada en el balance HLB, la Tensión Superficial (mN/m) de los componentes elegidos y el pH del sistema.",
-  "recomendacion_compras": "Sugerencia de materia prima a comprar si hace falta para alcanzar el objetivo, o texto vacío si no es necesario.",
+  "evaluacion_tecnica": "Dictamen profundo sobre interacciones químicas, solubilidad y justificación de las proporciones elegidas.",
+  "recomendacion_compras": "Justifica qué materiales EXTERNOS se deben comprar, de ser necesario.",
+  "protocolo_estabilidad": "Parámetros de prueba a 54°C, frío y tiempo de anaquel.",
+  "diagrama_manufactura": "Pasos para preparar el prototipo a escala de laboratorio.",
+  "evaluaciones_adicionales": "Pruebas recomendadas para asegurar el éxito.",
+  "perfil_funcionalidad": [
+    {
+      "propiedad": "Nombre de la propiedad",
+      "nivel": 3
+    }
+  ],
   "componentes": [
     {
-      "sap": "Código SAP del inventario (Ej. 40433)",
-      "nombre": "COMPONENTE exacto del inventario",
-      "funcion": "Justificación técnica del rol",
-      "porcentaje": "Masa % sugerida"
+      "sap": "Código SAP (Usa 'N/A' para el vehículo, o 'EXTERNO' para compras)",
+      "nombre": "COMPONENTE",
+      "funcion": "Justificación precisa de su rol en la arquitectura",
+      "porcentaje": "Masa %"
     }
   ]
 }`;
 
     return ejecutarPeticionGemini(promptEstrategico);
-
   } catch (error) {
     return { success: false, error: error.message };
   } finally {
@@ -98,57 +113,138 @@ Devuelve EXCLUSIVAMENTE un JSON puro con esta estructura:
 }
 
 /**
- * CONEXIÓN AL MOTOR IA CON ALGORITMO DE RESISTENCIA (EXPONENTIAL BACKOFF)
+ * CONEXIÓN AL MOTOR IA CON BACKOFF EXPONENCIAL Y LIMPIEZA DE JSON
  */
 function ejecutarPeticionGemini(promptTexto) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${GEMINI_API_KEY}`;
-  
+  // CORRECCIÓN 1: Modelo correcto (gemini-1.5-flash)
+  // Cambiamos el nombre a gemini-1.5-flash-latest
+  // Usando el endpoint v1 (producción) en lugar de v1beta
+  // URL conectada al modelo 3.5 Flash que tu API Key sí soporta
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${GEMINI_API_KEY}`;
+
   const payload = {
-    "contents": [{ "parts": [{"text": promptTexto}] }],
-    "generationConfig": { "response_mime_type": "application/json" }
+    contents: [{ parts: [{ text: promptTexto }] }],
+    generationConfig: { response_mime_type: "application/json" },
   };
-  
-  const opciones = { 
-    'method': 'post', 
-    'contentType': 'application/json', 
-    'payload': JSON.stringify(payload), 
-    'muteHttpExceptions': true 
+
+  const opciones = {
+    method: "post",
+    contentType: "application/json",
+    payload: JSON.stringify(payload),
+    muteHttpExceptions: true,
   };
-  
-  // CONFIGURACIÓN DE RESISTENCIA
-  const maxReintentos = 5; // Aumentamos la insistencia a 5 intentos (antes 3)
-  let delay = 4000; // Comenzamos esperando 4 segundos en el primer fallo
-  
+
+  const maxReintentos = 5;
+  let delay = 4000;
+
   for (let intento = 1; intento <= maxReintentos; intento++) {
     try {
       const respuesta = UrlFetchApp.fetch(url, opciones);
       const codigo = respuesta.getResponseCode();
       const texto = respuesta.getContentText();
-      
-      // Si la IA responde correctamente a la primera (o en algún reintento)
+
       if (codigo === 200) {
         const json = JSON.parse(texto);
-        return { success: true, datosFormulacion: JSON.parse(json.candidates[0].content.parts[0].text) };
+        let textoIA = json.candidates[0].content.parts[0].text;
+
+        // CORRECCIÓN 2: Limpiar el Markdown antes de parsear el JSON
+        textoIA = textoIA
+          .replace(/```json/gi, "")
+          .replace(/```/gi, "")
+          .trim();
+
+        return { success: true, datosFormulacion: JSON.parse(textoIA) };
       }
-      
-      // Si el servidor de Google dice "estoy saturado" (503) o "espera" (429)
+
       if ((codigo === 429 || codigo === 503) && intento < maxReintentos) {
-        Utilities.sleep(delay); // El script se pausa en silencio
-        delay *= 2; // El próximo intento esperará el doble (4s, 8s, 16s, 32s...)
-        continue; // Vuelve a intentar
+        Utilities.sleep(delay);
+        delay *= 2;
+        continue;
       }
-      
+
       throw new Error(`Error API HTTP ${codigo}: ${texto}`);
     } catch (error) {
       if (intento === maxReintentos) {
         return { success: false, error: error.toString() };
       }
-      Utilities.sleep(delay); 
+      Utilities.sleep(delay);
       delay *= 2;
     }
   }
 }
+
 function forzarAutorizacion() {
-  // Al no tener try/catch, esto obligará a Google a sacar la ventana de permisos
-  SpreadsheetApp.openById('1duNXyrgmefH09rgX_SlhaW0nuu7neETE4vvCg_A65qM');
+  SpreadsheetApp.openById("1duNXyrgmefH09rgX_SlhaW0nuu7neETE4vvCg_A65qM");
+}
+
+function testGeminiAPI() {
+  const KEY =
+    PropertiesService.getScriptProperties().getProperty("GEMINI_API_KEY");
+
+  if (!KEY) {
+    console.error("❌ LA API KEY ESTÁ VACÍA O NO SE LEYÓ CORRECTAMENTE.");
+    return;
+  }
+
+  // AQUÍ ESTÁ LA URL ACTUALIZADA PARA LA PRUEBA (usando v1)
+  // URL conectada al modelo 3.5 Flash que tu API Key sí soporta
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+
+  console.log("URL generada:", url.replace(KEY, "OCULTA_POR_SEGURIDAD"));
+
+  const payload = {
+    contents: [
+      { parts: [{ text: "Hola, responde solo con la palabra 'Conectado'." }] },
+    ],
+  };
+
+  const opciones = {
+    method: "post",
+    contentType: "application/json",
+    payload: JSON.stringify(payload),
+    muteHttpExceptions: true,
+  };
+
+  const respuesta = UrlFetchApp.fetch(url, opciones);
+  const codigo = respuesta.getResponseCode();
+  const texto = respuesta.getContentText();
+
+  console.log(`Código HTTP devuelto: ${codigo}`);
+  console.log(`Respuesta completa del servidor: ${texto}`);
+}
+
+function listarModelosGemini() {
+  const KEY =
+    PropertiesService.getScriptProperties().getProperty("GEMINI_API_KEY");
+
+  if (!KEY) {
+    console.error("❌ LA API KEY ESTÁ VACÍA.");
+    return;
+  }
+
+  // URL para listar los modelos disponibles para tu cuenta
+  const url = `https://generativelanguage.googleapis.com/v1beta/models?key=${KEY}`;
+
+  const opciones = {
+    method: "get",
+    muteHttpExceptions: true,
+  };
+
+  const respuesta = UrlFetchApp.fetch(url, opciones);
+  const json = JSON.parse(respuesta.getContentText());
+
+  if (json.models) {
+    console.log("✅ MODELOS COMPATIBLES CON TU API KEY:");
+    json.models.forEach((modelo) => {
+      // Filtramos solo los que son de texto/gemini y soportan generateContent
+      if (
+        modelo.name.includes("gemini") &&
+        modelo.supportedGenerationMethods.includes("generateContent")
+      ) {
+        console.log(`-> Nombre exacto: ${modelo.name}`);
+      }
+    });
+  } else {
+    console.log("Error al consultar:", json);
+  }
 }

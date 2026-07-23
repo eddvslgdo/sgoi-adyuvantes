@@ -3706,36 +3706,82 @@ function analizarEquivalenciaConIA(idProductoRaro) {
 }
 
 /**
- * 5. MOTOR DE IA (I+D): Sugiere una formulación química en base a un perfil requerido.
+ * FUNCIÓN DE LECTURA DE INVENTARIO (NUEVO PROYECTO)
+ * Lee la base de datos de materias primas para alimentar a la IA.
+ */
+function obtenerInventarioNuevo() {
+  try {
+    // ID de la nueva hoja proporcionada
+    const libro = SpreadsheetApp.openById('1zCxn5Cvuvfs29Hbpp58W6VCvV6AczGMG1o7CkhS8d2E');
+    const hoja = libro.getSheetByName('db_materia_prima');
+    
+    if (!hoja) throw new Error("No se encontró la pestaña 'db_materia_prima'.");
+
+    const datos = hoja.getDataRange().getValues();
+    const encabezados = datos.shift(); // Saca la primera fila (títulos)
+    
+    // Convierte las filas en JSON
+    const inventario = datos.map(fila => {
+      let obj = {};
+      encabezados.forEach((titulo, index) => {
+        if (titulo) obj[titulo.toString().trim()] = fila[index];
+      });
+      return obj;
+    });
+    
+    return inventario;
+  } catch (e) {
+    throw new Error("Error al leer Sheets: " + e.message);
+  }
+}
+
+/**
+ * 5. MOTOR DE IA (I+D) MEJORADO CON RAG Y BACKOFF EXPONENCIAL
+ * Sugiere una formulación química basada estrictamente en el inventario real.
  */
 function generarRecomendacionID(perfilBuscado) {
   const lock = LockService.getScriptLock();
   try {
-    lock.waitLock(15000);
-    verificarAccesoServidor();
+    lock.waitLock(25000); // Aumentado para dar tiempo a la lectura de BD y llamadas a IA
+    
+    // Asumo que esta función ya la tienes definida en tu proyecto
+    if (typeof verificarAccesoServidor === "function") {
+      verificarAccesoServidor();
+    }
 
     if (!GEMINI_API_KEY || GEMINI_API_KEY === "")
       throw new Error("Falta configurar la API Key de Gemini.");
 
-    // Construimos el Prompt para el Ingeniero de Desarrollo
+    // 1. Obtener el inventario en tiempo real
+    const inventarioJSON = obtenerInventarioNuevo();
+    const inventarioTexto = JSON.stringify(inventarioJSON);
+
+    // 2. Construimos el Prompt inyectando el contexto (RAG)
+// 2. Construimos el Prompt inyectando el contexto (RAG) y Lógica de Producto Terminado
     let prompt = `Eres un ingeniero químico Senior en Investigación y Desarrollo (I+D) de agroquímicos y adyuvantes.
-    Tu equipo comercial está buscando desarrollar o recomendar un producto que cumpla EXACTAMENTE con este perfil técnico (en una escala de 1 a 4 cruces de potencia):
+    Tu equipo comercial busca desarrollar un PRODUCTO COMERCIAL TERMINADO que cumpla EXACTAMENTE con este perfil técnico (escala 1 a 4):
     
     - Aplicación objetivo: ${perfilBuscado.aplicacion}
     - Propiedades Requeridas: ${JSON.stringify(perfilBuscado.propiedades)}
 
-    TAREA:
-    Sugiere qué familias químicas, ingredientes activos específicos y en qué concentraciones aproximadas se requerirían para formular un producto que logre este perfil con la mayor eficiencia posible.
-    
-    Devuelve ÚNICAMENTE un objeto JSON válido con esta estructura estricta (sin markdown, solo el JSON puro):
+    INVENTARIO DE MATERIAS PRIMAS DISPONIBLES:
+    ${inventarioTexto}
+
+    TAREA Y REGLAS ESTRICTAS:
+    1. Formula un PRODUCTO TERMINADO (total 100%). Debes utilizar "Agua (C.S.P.)", glicoles o solventes genéricos como vehículo para completar la fórmula.
+    2. Utiliza EXCLUSIVAMENTE los activos del inventario proporcionado para la carga química.
+    3. Si el inventario carece de una materia prima ideal para alcanzar la potencia solicitada (ej. falta un antiespumante específico o un modificador reológico), formula con lo mejor que tengas, pero adviértelo en el campo "sugerencia_adquisicion".
+
+    Devuelve ÚNICAMENTE un objeto JSON válido con esta estructura:
     {
-      "titulo_desarrollo": "Nombre descriptivo de la posible fórmula (Ej. Base Siliconada Acidificante)",
+      "titulo_desarrollo": "Nombre descriptivo del producto",
       "familias_quimicas": ["Familia 1", "Familia 2"],
-      "activos_sugeridos": "Escribe aquí la mezcla y los porcentajes sugeridos. Ej: Mezcla de Ésteres Metílicos (60%) y Organosilicona (10%)",
-      "justificacion_tecnica": "Explica brevemente por qué esta mezcla química específica lograría los niveles solicitados en el perfil."
+      "activos_sugeridos": "Lista la mezcla al 100%. Ej: 40721 - SURFACPOL 1308 (15%), 10808 - SILICON XHG248 (5%), Agua / Vehículo (80% C.S.P.)",
+      "justificacion_tecnica": "Justifica matemáticamente tu decisión basándote en los valores de HLB, pH y Tensión Superficial de la base de datos.",
+      "sugerencia_adquisicion": "Si el inventario es deficiente para este perfil, sugiere qué tipo de química deberíamos comprar. Si estamos bien, escribe 'El inventario actual cubre perfectamente las necesidades del perfil.'"
     }`;
 
-    // Llamamos a Gemini 2.5 Flash
+    // 3. Configuración de llamada a Gemini 2.5 Flash
     let url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
     let payload = {
       contents: [{ parts: [{ text: prompt }] }],
@@ -3749,13 +3795,38 @@ function generarRecomendacionID(perfilBuscado) {
       muteHttpExceptions: true,
     };
 
-    let response = UrlFetchApp.fetch(url, options);
-    let json = JSON.parse(response.getContentText());
+    // 4. Implementación de Backoff Exponencial (Protección Anti-Saturación Capa Gratuita)
+    const maxReintentos = 4;
+    let delay = 3000;
+    
+    for (let intento = 1; intento <= maxReintentos; intento++) {
+      try {
+        let response = UrlFetchApp.fetch(url, options);
+        let codigo = response.getResponseCode();
+        let texto = response.getContentText();
 
-    if (json.error) throw new Error(json.error.message);
+        if (codigo === 200) {
+          let json = JSON.parse(texto);
+          if (json.error) throw new Error(json.error.message);
+          let respuestaIA = json.candidates[0].content.parts[0].text;
+          return { success: true, sugerencia: JSON.parse(respuestaIA) };
+        }
 
-    let respuestaIA = json.candidates[0].content.parts[0].text;
-    return { success: true, sugerencia: JSON.parse(respuestaIA) };
+        if ((codigo === 429 || codigo === 503) && intento < maxReintentos) {
+          Utilities.sleep(delay);
+          delay *= 2;
+          continue;
+        }
+        
+        throw new Error(`Error API HTTP ${codigo}: ${texto}`);
+      } catch (e) {
+        if (intento === maxReintentos) {
+          throw new Error("Límite de reintentos superado. " + e.message);
+        }
+        Utilities.sleep(delay);
+        delay *= 2;
+      }
+    }
   } catch (e) {
     return { success: false, error: e.message };
   } finally {

@@ -4545,7 +4545,7 @@
 
 
     // ==========================================
-    // FUNCIÓN QUE DETONA LA IA DE DESARROLLO
+    // FUNCIÓN QUE DETONA LA IA DE DESARROLLO (FRONTEND ACTUALIZADO)
     // ==========================================
     window.consultarSugerenciaDesarrolloIA = function () {
       let appReq = document.getElementById("asesor_aplicacion").value || "Uso Agrícola General";
@@ -4560,12 +4560,13 @@
       if (reqs.length === 0) return Swal.fire("Aviso", "Agrega al menos una funcionalidad en los controles de la izquierda para que la IA tenga un punto de partida.", "info");
 
       Swal.fire({
-        title: '🧪 Analizando Rutas de Síntesis...',
-        html: 'Gemini está evaluando familias químicas y porcentajes de mezcla para lograr este perfil exacto...',
+        title: '🧪 Analizando Inventario y Rutas de Síntesis...',
+        html: 'Gemini está evaluando el inventario actual y formulando el producto terminado...',
         allowOutsideClick: false,
         didOpen: () => { Swal.showLoading(); }
       });
 
+      // AQUÍ SE CONECTA CON TU BACKEND (generarRecomendacionID)
       api.generarRecomendacionID({ aplicacion: appReq, propiedades: reqs }, function (res) {
         if (!res.success) return Swal.fire("Error", res.error, "error");
 
@@ -4582,19 +4583,25 @@
                     <div style="font-size: 0.8rem; color: #64748b; font-weight: 900; text-transform: uppercase; margin-bottom: 10px;">Familias Químicas Clave:</div>
                     <div style="margin-bottom: 20px;">${fams}</div>
 
-                    <div style="font-size: 0.8rem; color: #64748b; font-weight: 900; text-transform: uppercase; margin-bottom: 8px;">Fórmula Sugerida (Concentración):</div>
+                    <div style="font-size: 0.8rem; color: #64748b; font-weight: 900; text-transform: uppercase; margin-bottom: 8px;">Fórmula Sugerida (Producto Terminado 100%):</div>
                     <div style="background: #d1fae5; border-left: 5px solid #10b981; padding: 15px; color: #064e3b; font-weight: 800; font-size: 1rem; margin-bottom: 20px; border-radius: 0 8px 8px 0; line-height: 1.4;">
                         ${ia.activos_sugeridos}
                     </div>
 
                     <div style="font-size: 0.8rem; color: #64748b; font-weight: 900; text-transform: uppercase; margin-bottom: 8px;">Justificación Técnica:</div>
-                    <div style="font-style: italic; color: #475569; font-size: 0.95rem; line-height: 1.6; background: white; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                    <div style="font-style: italic; color: #475569; font-size: 0.95rem; line-height: 1.6; background: white; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 20px;">
                         "${ia.justificacion_tecnica}"
+                    </div>
+
+                    <!-- NUEVO BLOQUE PARA MOSTRAR LA SUGERENCIA DE ADQUISICIÓN DEL BACKEND -->
+                    <div style="font-size: 0.8rem; color: #b45309; font-weight: 900; text-transform: uppercase; margin-bottom: 8px;">⚠️ Diagnóstico de Inventario (Compras):</div>
+                    <div style="background: #fef3c7; color: #92400e; padding: 12px; border-radius: 8px; border: 1px dashed #f59e0b; font-size: 0.9rem; line-height: 1.5;">
+                        ${ia.sugerencia_adquisicion}
                     </div>
                 </div>
             `,
-          width: '650px',
-          confirmButtonText: 'Genial, cerrar',
+          width: '700px', // Lo hice un poco más ancho para que quepa bien el nuevo texto
+          confirmButtonText: 'Entendido',
           confirmButtonColor: '#7e22ce'
         });
       });
@@ -4724,7 +4731,9 @@
       // Abrimos la pantalla gigante
       abrirComparador();
     };  
-  </script>
+  
+  
+    </script>
   </div>
 </body>
 
