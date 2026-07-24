@@ -1,3 +1,4 @@
+// 1. Obtener la llave (Esto SÍ puede ir suelto arriba, porque no depende de los datos del usuario)
 const GEMINI_API_KEY =
   PropertiesService.getScriptProperties().getProperty("GEMINI_API_KEY");
 
@@ -57,7 +58,7 @@ function diseñarCoadyuvanteIA(datos) {
       .map((item) => `- ${item.funcionalidad}: Nivel ${item.potencia_deseada}`)
       .join("\n");
 
-// 2. Prompt Estratégico Nivel Experto (Arquitectura Comercial Dinámica)
+    // 2. Prompt Estratégico Nivel Experto (Arquitectura Comercial Dinámica)
     const promptEstrategico = `Eres el Director Científico Senior de Formulación Agrícola.
 Tu misión es diseñar un coadyuvante (PRODUCTO COMERCIAL TERMINADO).
 
@@ -104,7 +105,8 @@ Devuelve EXCLUSIVAMENTE un JSON puro con esta estructura:
   ]
 }`;
 
-    return ejecutarPeticionGemini(promptEstrategico);
+    // AQUÍ PASAMOS EL MODELO A LA SIGUIENTE FUNCIÓN
+    return ejecutarPeticionGemini(promptEstrategico, datos.modelo_ia);
   } catch (error) {
     return { success: false, error: error.message };
   } finally {
@@ -115,12 +117,20 @@ Devuelve EXCLUSIVAMENTE un JSON puro con esta estructura:
 /**
  * CONEXIÓN AL MOTOR IA CON BACKOFF EXPONENCIAL Y LIMPIEZA DE JSON
  */
-function ejecutarPeticionGemini(promptTexto) {
-  // CORRECCIÓN 1: Modelo correcto (gemini-1.5-flash)
-  // Cambiamos el nombre a gemini-1.5-flash-latest
-  // Usando el endpoint v1 (producción) en lugar de v1beta
-  // URL conectada al modelo 3.5 Flash que tu API Key sí soporta
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${GEMINI_API_KEY}`;
+/**
+ * CONEXIÓN AL MOTOR IA CON BACKOFF EXPONENCIAL Y LIMPIEZA DE JSON
+ */
+function ejecutarPeticionGemini(promptTexto, modeloRecibido) {
+  // 1. Filtro robusto con los nombres CORRECTOS y ACTUALES para tu API
+  let modeloSeleccionado = "gemini-3.5-flash-lite"; // Motor rápido por defecto
+  
+  if (modeloRecibido && modeloRecibido.includes("pro")) {
+    // Si seleccionas el modo experto, usamos la versión más capaz
+    modeloSeleccionado = "gemini-3.5-flash"; 
+  }
+
+  // 2. Construir la URL con el modelo validado
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${modeloSeleccionado}:generateContent?key=${GEMINI_API_KEY}`;
 
   const payload = {
     contents: [{ parts: [{ text: promptTexto }] }],
@@ -147,7 +157,6 @@ function ejecutarPeticionGemini(promptTexto) {
         const json = JSON.parse(texto);
         let textoIA = json.candidates[0].content.parts[0].text;
 
-        // CORRECCIÓN 2: Limpiar el Markdown antes de parsear el JSON
         textoIA = textoIA
           .replace(/```json/gi, "")
           .replace(/```/gi, "")
@@ -175,76 +184,4 @@ function ejecutarPeticionGemini(promptTexto) {
 
 function forzarAutorizacion() {
   SpreadsheetApp.openById("1duNXyrgmefH09rgX_SlhaW0nuu7neETE4vvCg_A65qM");
-}
-
-function testGeminiAPI() {
-  const KEY =
-    PropertiesService.getScriptProperties().getProperty("GEMINI_API_KEY");
-
-  if (!KEY) {
-    console.error("❌ LA API KEY ESTÁ VACÍA O NO SE LEYÓ CORRECTAMENTE.");
-    return;
-  }
-
-  // AQUÍ ESTÁ LA URL ACTUALIZADA PARA LA PRUEBA (usando v1)
-  // URL conectada al modelo 3.5 Flash que tu API Key sí soporta
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${GEMINI_API_KEY}`;
-
-  console.log("URL generada:", url.replace(KEY, "OCULTA_POR_SEGURIDAD"));
-
-  const payload = {
-    contents: [
-      { parts: [{ text: "Hola, responde solo con la palabra 'Conectado'." }] },
-    ],
-  };
-
-  const opciones = {
-    method: "post",
-    contentType: "application/json",
-    payload: JSON.stringify(payload),
-    muteHttpExceptions: true,
-  };
-
-  const respuesta = UrlFetchApp.fetch(url, opciones);
-  const codigo = respuesta.getResponseCode();
-  const texto = respuesta.getContentText();
-
-  console.log(`Código HTTP devuelto: ${codigo}`);
-  console.log(`Respuesta completa del servidor: ${texto}`);
-}
-
-function listarModelosGemini() {
-  const KEY =
-    PropertiesService.getScriptProperties().getProperty("GEMINI_API_KEY");
-
-  if (!KEY) {
-    console.error("❌ LA API KEY ESTÁ VACÍA.");
-    return;
-  }
-
-  // URL para listar los modelos disponibles para tu cuenta
-  const url = `https://generativelanguage.googleapis.com/v1beta/models?key=${KEY}`;
-
-  const opciones = {
-    method: "get",
-    muteHttpExceptions: true,
-  };
-
-  const respuesta = UrlFetchApp.fetch(url, opciones);
-  const json = JSON.parse(respuesta.getContentText());
-
-  if (json.models) {
-    console.log("✅ MODELOS COMPATIBLES CON TU API KEY:");
-    json.models.forEach((modelo) => {
-      // Filtramos solo los que son de texto/gemini y soportan generateContent
-      if (
-        modelo.name.includes("gemini") &&
-        modelo.supportedGenerationMethods.includes("generateContent")
-      ) {
-        console.log(`-> Nombre exacto: ${modelo.name}`);
-      }
-    });
-  } else {
-    console.log("Error al consultar:", json);
-  }
 }

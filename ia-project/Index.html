@@ -243,6 +243,25 @@
             <div id="lista-funcionalidades" class="space-y-2 pt-2"></div>
           </div>
 
+          <!-- Selector de Motor de IA -->
+          <div>
+            <label
+              class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1"
+              >🧠 Motor de Inteligencia Artificial</label
+            >
+            <select
+              id="modelo-ia"
+              class="w-full text-sm border border-indigo-200 rounded-xl p-3 bg-indigo-50/30 text-indigo-900 font-semibold focus:ring-indigo-500"
+            >
+              <option value="gemini-1.5-flash">
+                Modo Pruebas (Rápido y Económico - Flash)
+              </option>
+              <option value="gemini-1.5-pro">
+                Modo Experto (Análisis Químico Profundo - Pro)
+              </option>
+            </select>
+          </div>
+
           <button
             id="btnAgro"
             onclick="ejecutarDiseno()"
@@ -570,6 +589,7 @@
           plaguicidas: document.getElementById("plaguicidas").value,
           organico: document.getElementById("organico").value,
           matriz: matriz,
+          modelo_ia: document.getElementById("modelo-ia").value,
         };
 
         ejecutarDisenoConDatos(datosUltimoIntento);
