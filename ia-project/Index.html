@@ -386,13 +386,15 @@
               <div class="overflow-x-auto">
                 <table class="w-full text-left text-xs border-collapse">
                   <thead
-                    class="bg-slate-50 text-slate-500 font-bold border-b border-slate-100 text-[9px] uppercase tracking-wider"
+                    class="bg-slate-100 text-slate-700 uppercase text-[11px] font-bold tracking-wider"
                   >
                     <tr>
-                      <th class="p-3 w-20">SAP</th>
-                      <th class="p-3">Componente / Materia Prima</th>
-                      <th class="p-3">Función Técnica</th>
-                      <th class="p-3 text-right">Masa %</th>
+                      <th class="p-3 text-left">SAP</th>
+                      <th class="p-3 text-left">
+                        PRODUCTO / COMERCIAL (COL B)
+                      </th>
+                      <th class="p-3 text-left">FUNCIÓN TÉCNICA</th>
+                      <th class="p-3 text-right">MASA %</th>
                     </tr>
                   </thead>
                   <tbody
@@ -611,7 +613,8 @@
             btn.disabled = false;
             document.getElementById("loading-agro").classList.add("hidden");
 
-            if (res.success) {
+            // VALIDACIÓN BLINDADA: Verificar res, res.success y res.datosFormulacion
+            if (res && res.success && res.datosFormulacion) {
               const data = res.datosFormulacion;
               document.getElementById("kpi-dif").innerText =
                 data.dificultad || "N/A";
@@ -622,15 +625,14 @@
               document.getElementById("eval-texto").innerText =
                 data.evaluacion_tecnica || "Sin evaluación";
 
-              // ⬇️ LÍNEAS NUEVAS AGREGADAS AQUÍ ⬇️
               document.getElementById("manufactura-texto").innerText =
                 data.diagrama_manufactura || "No especificado.";
               document.getElementById("estabilidad-texto").innerText =
                 data.protocolo_estabilidad || "No especificado.";
-              // ⬆️ FIN DE LÍNEAS NUEVAS ⬆️
               document.getElementById("eval-adicionales-texto").innerText =
                 data.evaluaciones_adicionales ||
                 "No se sugirieron pruebas adicionales.";
+
               // Revisar recomendación de compras
               if (
                 data.recomendacion_compras &&
@@ -650,34 +652,31 @@
                 data.perfil_funcionalidad.length > 0
               ) {
                 data.perfil_funcionalidad.forEach((f) => {
-                  // Generar las cruces (Ej: + + +)
                   let cruces = "";
                   for (let i = 0; i < f.nivel; i++) {
                     cruces += "+ ";
                   }
 
-                  // Asignar color (Semáforo: Verde a Rojo) dependiendo del nivel
-                  // Asignar color (Semáforo: Verde a Rojo) dependiendo del nivel
                   let bgClass = "bg-slate-200 text-slate-600";
                   if (f.nivel === 4) {
-                    bgClass = "bg-green-600 text-white shadow-inner"; // 4 = Verde Bandera
+                    bgClass = "bg-green-600 text-white shadow-inner";
                   } else if (f.nivel === 3) {
-                    bgClass = "bg-lime-400 text-lime-950"; // 3 = Verde Limón / Claro
+                    bgClass = "bg-lime-400 text-lime-950";
                   } else if (f.nivel === 2) {
-                    bgClass = "bg-orange-400 text-orange-950"; // 2 = Naranja
+                    bgClass = "bg-orange-400 text-orange-950";
                   } else if (f.nivel === 1) {
-                    bgClass = "bg-red-600 text-white shadow-inner"; // 1 = Rojo Alerta
+                    bgClass = "bg-red-600 text-white shadow-inner";
                   }
 
                   funcHtml += `
-                  <tr>
-                    <td class="p-3 font-bold text-slate-700 uppercase text-[11px]">${f.propiedad}</td>
-                    <td class="p-0">
-                      <div class="${bgClass} h-full w-full p-2.5 font-black text-center tracking-[0.3em] text-sm transition-colors">
-                        ${cruces.trim()}
-                      </div>
-                    </td>
-                  </tr>`;
+            <tr>
+              <td class="p-3 font-bold text-slate-700 uppercase text-[11px]">${f.propiedad}</td>
+              <td class="p-0">
+                <div class="${bgClass} h-full w-full p-2.5 font-black text-center tracking-[0.3em] text-sm transition-colors">
+                  ${cruces.trim()}
+                </div>
+              </td>
+            </tr>`;
                 });
               } else {
                 funcHtml = `<tr><td colspan="2" class="p-3 text-center text-slate-500">No se calculó el perfil.</td></tr>`;
@@ -685,16 +684,24 @@
               document.getElementById("tabla-funcionalidad").innerHTML =
                 funcHtml;
 
+              // RENDERIZAR TABLA DE COMPONENTES CON IDENTIFICACIÓN EXACTA
               let cuerpoHtml = "";
               if (data.componentes && data.componentes.length > 0) {
                 data.componentes.forEach((c) => {
+                  let badgeSapClass = "text-indigo-700 bg-indigo-50/50";
+                  if (c.sap === "EXTERNO") {
+                    badgeSapClass = "text-amber-700 bg-amber-100 font-black";
+                  } else if (c.sap === "N/A") {
+                    badgeSapClass = "text-slate-500 bg-slate-100";
+                  }
+
                   cuerpoHtml += `
-                <tr class="hover:bg-slate-50 transition-colors">
-                  <td class="p-3 font-mono font-bold text-indigo-700 bg-indigo-50/50">${c.sap || "N/A"}</td>
-                  <td class="p-3 font-semibold text-slate-900">${c.nombre || "-"}</td>
-                  <td class="p-3 text-slate-500">${c.funcion || "-"}</td>
-                  <td class="p-3 text-right font-bold font-mono">${c.porcentaje || "-"}</td>
-                </tr>`;
+          <tr class="hover:bg-slate-50 transition-colors border-b border-slate-100">
+            <td class="p-3 font-mono font-bold ${badgeSapClass} rounded-md text-center text-xs">${c.sap || "N/A"}</td>
+            <td class="p-3 font-bold text-slate-900 text-xs">${c.nombre || "-"}</td>
+            <td class="p-3 text-slate-600 text-xs font-medium">${c.funcion || "-"}</td>
+            <td class="p-3 text-right font-bold font-mono text-slate-800">${c.porcentaje || "-"}</td>
+          </tr>`;
                 });
               } else {
                 cuerpoHtml = `<tr><td colspan="4" class="p-3 text-center text-slate-500">No se determinaron componentes.</td></tr>`;
@@ -705,10 +712,15 @@
                 .getElementById("dashboard-resultados")
                 .classList.remove("hidden");
             } else {
+              // MANEJO DE ERRORES: Si algo falla en el pipeline, muestra la alerta negra
               document
                 .getElementById("estado-vacio")
                 .classList.remove("hidden");
-              mostrarAlerta(res.error);
+              const msgError =
+                res && res.error
+                  ? res.error
+                  : "Error: El servidor no devolvió datos válidos.";
+              mostrarAlerta(msgError);
             }
           })
           .withFailureHandler((err) => {
@@ -718,7 +730,7 @@
             document.getElementById("estado-vacio").classList.remove("hidden");
             mostrarAlerta("Fallo de comunicación: " + err.message);
           })
-          .diseñarCoadyuvanteIA(datos);
+          .diseñarCoadyuvanteV2(datos);
       }
     </script>
   </body>
